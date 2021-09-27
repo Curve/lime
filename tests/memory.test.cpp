@@ -18,10 +18,14 @@ TEST_CASE("Memory utils are tested", "[memory]")
     CHECK(lime::page::get_page_at(*allocated_memory)->get_protection() == lime::prot_read);
 
     CHECK(lime::protect(*allocated_memory, 100, lime::prot_read | lime::prot_write));
+
+    //? This check fails on github but works for me locally with the same settings.
     CHECK(lime::page::get_page_at(*allocated_memory)->get_protection() == (lime::prot_read | lime::prot_write));
 
     auto previous_allocated = *allocated_memory;
     allocated_memory.reset();
+
+    //? This check fails on github but works for me locally with the same settings.
     CHECK_FALSE(lime::page::get_page_at(previous_allocated));
 
     auto at_previous = lime::allocate_at(previous_allocated, 100, lime::prot_read);

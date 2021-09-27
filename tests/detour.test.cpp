@@ -2,16 +2,22 @@
 #include <catch2/catch.hpp>
 #include <hooks/detour.hpp>
 
+#ifdef __GNUC__
+#define NOOPT __attribute__((optimize("-O0")))
+#else
+#define NOOPT
+#endif
+
 std::unique_ptr<lime::detour> int_rtn_detour;
-int int_rtn_original(int param)
+int NOOPT int_rtn_original(int param)
 {
     return param + 1;
 }
-int int_rtn_hook(int param)
+int NOOPT int_rtn_hook(int param)
 {
     return int_rtn_detour->get_original<int(int)>()(param + 1);
 }
-int int_rtn_hook2(int param)
+int NOOPT int_rtn_hook2(int param)
 {
     return param - 1;
 }
