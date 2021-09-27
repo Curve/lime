@@ -12,7 +12,7 @@ namespace lime
 
     module::~module() = default;
     module::module(module &&) noexcept = default;
-    module::module() : m_impl(std::make_unique<impl>()), m_size(0), m_start(0){};
+    module::module() : m_impl(std::make_unique<impl>()), m_size(0), m_start(0) {}
 
     std::string module::get_name() const
     {
@@ -71,8 +71,7 @@ namespace lime
     {
         //? dlinfo doesn't supply us with enough information, that's why we have to rely on dl_iterate_phdr
         auto modules = get_modules();
-        auto module =
-            std::find_if(modules.begin(), modules.end(), [&name](const auto &item) { return item.m_name == name; });
+        auto module = std::find_if(modules.begin(), modules.end(), [&name](const auto &item) { return item.m_name == name; });
 
         if (module != modules.end())
         {

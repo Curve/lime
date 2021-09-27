@@ -16,7 +16,7 @@ namespace lime
     };
 
     page::~page() = default;
-    page::page() : m_prot(0){};
+    page::page() : m_prot(0) {}
     page::page(page &&) noexcept = default;
 
     std::optional<page> page::impl::parse_page(const std::string &line)
