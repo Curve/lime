@@ -7,4 +7,10 @@ namespace lime
     {
         return reinterpret_cast<func_t<type_t>>(m_original_func);
     }
+
+    template <typename target_t, typename replacement_t>
+    std::unique_ptr<detour> detour::create(const target_t &target, const replacement_t &replacement)
+    {
+        return detour::create(reinterpret_cast<std::uintptr_t>(target), reinterpret_cast<std::uintptr_t>(replacement));
+    }
 } // namespace lime

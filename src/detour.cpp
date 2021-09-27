@@ -8,23 +8,31 @@
 namespace lime
 {
     detour::detour() = default;
-    detour::~detour() = default;
     detour::detour(detour &&) noexcept = default;
 
+    detour::~detour()
+    {
+        if (protect(m_original_page->get_start(), m_original_page->get_end() - m_original_page->get_start(),
+                    prot_execute | prot_write | prot_read))
+        {
+            memcpy(reinterpret_cast<void *>(m_target), m_original_code.data(), m_original_code.size());
+            protect(m_original_page->get_start(), m_original_page->get_end() - m_original_page->get_start(), m_original_page->get_protection());
+        }
+    }
     std::uintptr_t detour::get_original() const
     {
         return m_original_func;
     }
 
-    std::optional<detour> detour::create(const std::uintptr_t &target, const std::uintptr_t &replacement)
+    std::unique_ptr<detour> detour::create(const std::uintptr_t &target, const std::uintptr_t &replacement)
     {
         auto original_page = page::get_page_at(target);
 
         if (!original_page)
-            return std::nullopt;
+            return nullptr;
 
         if (!protect(original_page->get_start(), original_page->get_end() - original_page->get_start(), prot_read | prot_write | prot_execute))
-            return std::nullopt;
+            return nullptr;
 
         auto required_size = disasm::get_required_prologue_length(target, 6);
 
@@ -77,8 +85,7 @@ namespace lime
             }
         }
 
-        std::optional<detour> rtn;
-
+        std::unique_ptr<detour> rtn;
         if (!fixed_code.empty() && fixed_code.size() <= estimated_size)
         {
             memcpy(reinterpret_cast<void *>(*trampoline_page), fixed_code.data(), fixed_code.size());
@@ -103,15 +110,14 @@ namespace lime
                 memcpy(reinterpret_cast<void *>(target), hook_code.data(), hook_code.size());
             }
 
-            rtn.emplace(detour{});
+            rtn = std::unique_ptr<detour>(new detour);
+
             rtn->m_target = target;
             rtn->m_replacement = replacement;
             rtn->m_trampoline = trampoline_page;
             rtn->m_original_code = original_code;
             rtn->m_original_page = std::make_unique<lime::page>(std::move(*original_page));
             rtn->m_original_func = *trampoline_page + (arch == architecture::x64 ? 6 + sizeof(std::uintptr_t) : 1 + sizeof(std::uintptr_t));
-
-            return rtn;
         }
 
         protect(original_page->get_start(), original_page->get_end() - original_page->get_start(), original_page->get_protection());

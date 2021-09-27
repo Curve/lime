@@ -30,7 +30,9 @@ namespace lime
         template <typename type_t> func_t<type_t> get_original() const;
 
       public:
-        static std::optional<detour> create(const std::uintptr_t &target, const std::uintptr_t &replacement);
+        template <typename target_t, typename replacement_t>
+        static std::unique_ptr<detour> create(const target_t &target, const replacement_t &replacement);
+        static std::unique_ptr<detour> create(const std::uintptr_t &target, const std::uintptr_t &replacement);
     };
 } // namespace lime
 
