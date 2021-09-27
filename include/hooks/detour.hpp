@@ -7,6 +7,9 @@ namespace lime
 {
     class detour
     {
+        template <typename type_t> //
+        using func_t = std::conditional_t<std::is_pointer_v<type_t>, type_t, std::add_pointer_t<type_t>>;
+
       private:
         detour();
 
@@ -24,9 +27,11 @@ namespace lime
 
       public:
         std::uintptr_t get_original() const;
-        template <typename func_t> func_t get_original() const;
+        template <typename type_t> func_t<type_t> get_original() const;
 
       public:
         static std::optional<detour> create(const std::uintptr_t &target, const std::uintptr_t &replacement);
     };
 } // namespace lime
+
+#include "detour.inl"
