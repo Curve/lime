@@ -1,0 +1,22 @@
+#define CONFIG_CATCH_MAIN
+#include <catch2/catch.hpp>
+#include <constants/protection.hpp>
+#include <page.hpp>
+
+__attribute__((noinline)) int some_func()
+{
+    return 1;
+}
+
+int test_val = 0;
+
+TEST_CASE("Pages are tested", "[pages]")
+{
+    REQUIRE_FALSE(lime::page::get_pages().empty());
+
+    auto some_func_page = lime::page::get_page_at(reinterpret_cast<std::uintptr_t>(some_func));
+    CHECK(some_func_page->get_protection() == (lime::prot_execute | lime::prot_read));
+
+    auto test_val_page = lime::page::get_page_at(reinterpret_cast<std::uintptr_t>(&test_val));
+    CHECK(test_val_page->get_protection() == (lime::prot::prot_read | lime::prot_write));
+}
