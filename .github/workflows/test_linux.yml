@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch:
   push:
     branches: [master]
     paths-ignore:
@@ -9,7 +10,7 @@ on:
 
 name: Test on Linux
 jobs:
-  build-linux:
+  test-linux:
     runs-on: ubuntu-20.04
     strategy:
       fail-fast: false
@@ -23,7 +24,7 @@ jobs:
           submodules: recursive
 
       - name: Install build dependencies
-        run: "sudo apt-get update && sudo apt-get install git build-essential cmake catch2"
+        run: "sudo apt-get update && sudo apt-get install git build-essential cmake catch"
 
       - name: Compile
         run: "mkdir build && cd build && cmake -DLIME_BUILD_TESTS=ON .. && cmake --build . --config Release"
