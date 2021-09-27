@@ -4,7 +4,7 @@ project(lime LANGUAGES CXX VERSION 1.0)
 # --------------------------------------------------------------------------------------------------------
 # Library options
 # --------------------------------------------------------------------------------------------------------
-option(LIME_RUN_TESTS "Run tests" OFF)
+option(LIME_BUILD_TESTS "Run tests" OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # Create library
@@ -29,7 +29,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC "include")
 # --------------------------------------------------------------------------------------------------------
 # Setup Catch2
 # --------------------------------------------------------------------------------------------------------
-if (LIME_RUN_TESTS)
+if (LIME_BUILD_TESTS)
+    message(STATUS "Building tests")
     find_package(Catch2 CONFIG REQUIRED)
 
     file(GLOB test_src "tests/*.cpp")
