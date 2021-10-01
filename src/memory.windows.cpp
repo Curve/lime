@@ -53,12 +53,13 @@ std::shared_ptr<std::uintptr_t> lime::allocate_near(const std::uintptr_t &addres
     {
         if (info.State & MEM_FREE)
         {
+            const auto diff = reinterpret_cast<std::int64_t>(page_address) - static_cast<std::int64_t>(address);
+            if (diff != static_cast<std::int32_t>(diff))
+                continue;
+
             if (allocate_at(reinterpret_cast<std::uintptr_t>(page_address), size, prot))
             {
-                const auto diff = reinterpret_cast<std::int64_t>(page_address) - static_cast<std::int64_t>(address);
-
-                if (diff == static_cast<std::int32_t>(diff))
-                    return {new auto(reinterpret_cast<std::uintptr_t>(page_address)), [size](auto *data) { free(*data, size); }};
+                return {new auto(reinterpret_cast<std::uintptr_t>(page_address)), [size](auto *data) { free(*data, size); }};
             }
         }
 

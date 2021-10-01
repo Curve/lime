@@ -34,11 +34,11 @@ namespace lime
             return std::nullopt;
 
         if (permissions[0] != '-')
-            page.m_prot |= prot_read;
+            page.m_prot |= PROT_READ;
         if (permissions[1] != '-')
-            page.m_prot |= prot_write;
+            page.m_prot |= PROT_WRITE;
         if (permissions[2] != '-')
-            page.m_prot |= prot_execute;
+            page.m_prot |= PROT_EXEC;
 
         page.m_end = static_cast<std::uintptr_t>(end);
         page.m_start = static_cast<std::uintptr_t>(start);

@@ -1,5 +1,5 @@
-#include <cerrno>
 #include <cstring>
+#include <page.hpp>
 #include <sys/mman.h>
 #include <sys/unistd.h>
 #include <utility/memory.hpp>
@@ -52,26 +52,27 @@ std::shared_ptr<std::uintptr_t> lime::allocate_near(const std::uintptr_t &addres
     auto aligned = address & (getpagesize() - 1) ? (address + getpagesize()) & ~(getpagesize() - 1) : address;
     auto *rtn = reinterpret_cast<void *>(-1);
     std::size_t skipped_pages = 0;
-    std::size_t last_error = 0;
 
-    do
+    while (true)
     {
-        if (last_error != 0 && last_error != EEXIST)
-            break;
+        const auto diff = static_cast<std::int64_t>(aligned) - static_cast<std::int64_t>(address);
+        if (diff == static_cast<std::int32_t>(diff))
+        {
+            rtn = mmap(reinterpret_cast<void *>(aligned), size, prot, MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE, -1, 0);
+        }
+        else
+        {
+            if (diff > 0)
+                break;
+        }
 
-        rtn = mmap(reinterpret_cast<void *>(aligned), size, prot, MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE, -1, 0);
         aligned = (aligned + getpagesize()) & ~(getpagesize() - 1);
-        last_error = errno;
         skipped_pages++;
-    } while (rtn == reinterpret_cast<void *>(-1));
+    }
 
     if (rtn != reinterpret_cast<void *>(-1))
     {
         auto allocated_page = reinterpret_cast<std::uintptr_t>(rtn);
-        if (static_cast<std::int32_t>(allocated_page - address) != static_cast<std::intptr_t>(allocated_page - address))
-        {
-            return nullptr;
-        }
 
         return {new auto(allocated_page), [size](const std::uintptr_t *data) {
                     free(*data, size);
