@@ -2,7 +2,13 @@
 #include <catch2/catch.hpp>
 #include <module.hpp>
 
-extern "C" __attribute__((visibility("default"))) void exported_func()
+#if defined(__linux__)
+#define EXPORT __attribute__((visibility("default")))
+#elif defined(_WIN32)
+#define EXPORT __declspec(dllexport)
+#endif
+
+extern "C" EXPORT void exported_func()
 {
     printf("Hello from exported function!\n");
 }

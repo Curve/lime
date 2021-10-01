@@ -12,27 +12,23 @@ TEST_CASE("Memory utils are tested", "[memory]")
     CHECK(lime::read<int>(reinterpret_cast<std::uintptr_t>(&val)) == 100);
     REQUIRE(val == 100);
 
-    auto allocated_memory = lime::allocate(100, lime::prot_read);
+    auto allocated_memory = lime::allocate(100, lime::prot::read_only);
 
     REQUIRE(allocated_memory);
-    CHECK(lime::page::get_page_at(*allocated_memory)->get_protection() == lime::prot_read);
+    CHECK(lime::page::get_page_at(*allocated_memory)->get_protection() == lime::prot::read_only);
 
-    CHECK(lime::protect(*allocated_memory, 100, lime::prot_read | lime::prot_write));
+    CHECK(lime::protect(*allocated_memory, 100, lime::prot::read_write));
 
-    //? This check fails on github but works for me locally with the same settings.
-    // CHECK(lime::page::get_page_at(*allocated_memory)->get_protection() == (lime::prot_read | lime::prot_write));
+    CHECK(lime::page::get_page_at(*allocated_memory)->get_protection() == (lime::prot::read_write));
 
-    auto previous_allocated = *allocated_memory;
-    allocated_memory.reset();
+    // auto previous_allocated = *allocated_memory;
+    // allocated_memory.reset();
 
-    //? This check fails on github but works for me locally with the same settings.
-    // CHECK_FALSE(lime::page::get_page_at(previous_allocated));
+    // auto at_previous = lime::allocate_at(previous_allocated, 100, lime::prot::read_only);
+    // REQUIRE(at_previous);
+    // CHECK(lime::page::get_page_at(previous_allocated)->get_protection() == lime::prot::read_only);
 
-    auto at_previous = lime::allocate_at(previous_allocated, 100, lime::prot_read);
-    REQUIRE(at_previous);
-    CHECK(lime::page::get_page_at(previous_allocated)->get_protection() == lime::prot_read);
-
-    auto allocated_near = lime::allocate_near(reinterpret_cast<std::uintptr_t>(&val), 100, lime::prot_read);
+    auto allocated_near = lime::allocate_near(0, 100, lime::prot::read_only);
     REQUIRE(allocated_near);
-    CHECK(*allocated_near - reinterpret_cast<std::uintptr_t>(&val) < INT32_MAX);
+    CHECK(*allocated_near < INT32_MAX);
 }

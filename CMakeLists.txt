@@ -10,9 +10,9 @@ option(LIME_BUILD_TESTS "Run tests" OFF)
 # Create library
 # --------------------------------------------------------------------------------------------------------
 if (UNIX)
-    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/*.linux.cpp")
+    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/scan.cpp" "src/*.linux.cpp")
 elseif (WIN32)
-    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/*.windows.cpp")
+    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/scan.cpp" "src/*.windows.cpp")
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -53,5 +53,9 @@ option(ZYDIS_BUILD_TOOLS "" OFF)
 option(ZYDIS_BUILD_EXAMPLES "" OFF)
 
 add_subdirectory("lib/zydis")
-target_link_libraries(${PROJECT_NAME} PRIVATE dl)
+
+if (UNIX)
+    target_link_libraries(${PROJECT_NAME} PRIVATE dl)
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE Zydis)

@@ -5,7 +5,7 @@
 #ifdef __GNUC__
 #define NOOPT __attribute__((optimize("-O0")))
 #else
-#define NOOPT
+#define NOOPT __attribute__((optnone))
 #endif
 
 std::unique_ptr<lime::detour> int_rtn_detour;

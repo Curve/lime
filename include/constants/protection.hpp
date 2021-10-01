@@ -1,16 +1,34 @@
 #pragma once
-#ifdef __linux__
+#if defined(__linux__)
 #include <sys/mman.h>
+#elif defined(_WIN32)
+#include <Windows.h>
 #endif
 
 namespace lime
 {
-#ifdef __linux__
-    enum prot
+    namespace prot
     {
-        prot_read = PROT_READ,
-        prot_write = PROT_WRITE,
-        prot_execute = PROT_EXEC
-    };
+#if defined(__linux__)
+        enum
+        {
+            read_only = PROT_READ,
+            read_write = PROT_WRITE | PROT_READ,
+
+            execute = PROT_EXEC,
+            read_execute = PROT_EXEC | PROT_READ,
+            read_write_execute = PROT_EXEC | PROT_READ | PROT_WRITE,
+        };
+#elif defined(_WIN32)
+        enum
+        {
+            read_only = PAGE_READONLY,
+            read_write = PAGE_READWRITE,
+
+            execute = PAGE_EXECUTE,
+            read_execute = PAGE_EXECUTE_READ,
+            read_write_execute = PAGE_EXECUTE_READWRITE,
+        };
 #endif
+    } // namespace prot
 } // namespace lime
