@@ -5,7 +5,11 @@
 #ifdef __GNUC__
 #define NOOPT __attribute__((optimize("-O0")))
 #else
-#define NOOPT __attribute__((optnone))
+#define NOOPT
+#endif
+
+#ifdef _WIN32
+#pragma optimize("", off)
 #endif
 
 std::unique_ptr<lime::detour> int_rtn_detour;
@@ -21,6 +25,10 @@ int NOOPT int_rtn_hook2(int param)
 {
     return param - 1;
 }
+
+#ifdef _WIN32
+#pragma optimize("", on)
+#endif
 
 TEST_CASE("Detours are tested", "[detours]")
 {

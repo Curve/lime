@@ -2,15 +2,11 @@
 #include <catch2/catch.hpp>
 #include <utility/signature.hpp>
 
-void test()
-{
-    __asm("mov $1337, %rax\n"
-          "sub $917, %rax");
-}
+static const std::uint8_t find_me[] = {0x90, 0xC7, 0x10, 0x39, 0x05, 0x00, 0x00, 0x00, 0x48, 0x2D, 0x95, 0x03, 0x00, 0x00};
 
 TEST_CASE("Signature scanning is tested", "[signature]")
 {
-    auto test_page = lime::page::get_page_at(reinterpret_cast<std::uintptr_t>(test));
+    auto test_page = lime::page::get_page_at(reinterpret_cast<std::uintptr_t>(&find_me));
     auto this_module = lime::module::get("");
 
     REQUIRE(test_page);

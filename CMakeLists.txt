@@ -9,6 +9,10 @@ option(LIME_BUILD_TESTS "Run tests" OFF)
 # --------------------------------------------------------------------------------------------------------
 # Create library
 # --------------------------------------------------------------------------------------------------------
+if (NOT MSVC)
+    set(LIME_COMPILE_OPTIONS -Wall -Werror -Wextra -pedantic)
+endif()
+
 if (UNIX)
     file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/scan.cpp" "src/*.linux.cpp")
 elseif (WIN32)
@@ -18,7 +22,7 @@ endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 add_library(${PROJECT_NAME} STATIC ${src})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
-target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Werror -Wextra -pedantic)
+target_compile_options(${PROJECT_NAME} PRIVATE ${LIME_COMPILE_OPTIONS})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
 
 # --------------------------------------------------------------------------------------------------------
@@ -42,7 +46,6 @@ if (LIME_BUILD_TESTS)
     catch_discover_tests(tests)
 
     target_compile_features(tests PRIVATE cxx_std_17)
-    target_compile_options(tests PRIVATE -Wall -Werror -Wextra -pedantic)
     set_target_properties(tests PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
 endif()
 

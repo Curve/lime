@@ -28,11 +28,13 @@ jobs:
           git clone https://github.com/catchorg/Catch2.git 
           cd Catch2
           git checkout v2.13.7
-          cmake -Bbuild -H. -DBUILD_TESTING=OFF -DCATCH_BUILD_EXAMPLES=OFF -DCATCH_BUILD_STATIC_LIBRARY=ON
-          sudo cmake --build build/ --target install
+          mkdir build
+          cd build
+          cmake .. -DBUILD_TESTING=OFF -DCATCH_BUILD_EXAMPLES=OFF -DCATCH_BUILD_STATIC_LIBRARY=ON
+          cmake --build . --target install
 
       - name: Compile
         run: "mkdir build && cd build && cmake .. -DLIME_BUILD_TESTS=ON && cmake --build . --config Debug"
 
       - name: Run Tests
-        run: ".\build\tests"
+        run: "D:\\a\\lime\\lime\\build\\Debug\\tests.exe" # Hardcoded path because windows is cancerous.
