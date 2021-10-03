@@ -26,7 +26,48 @@ namespace lime
         return std::nullopt;
     }
 
-    std::optional<std::uintptr_t> disasm::read_until(const std::uint8_t &mnemonic, const std::uintptr_t &address, const std::size_t &size)
+    std::optional<std::uintptr_t> disasm::follow_if_jump(const std::uintptr_t &address)
+    {
+        ZydisDecoder decoder;
+
+        if constexpr (arch == architecture::x64)
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+        else
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LEGACY_32, ZYDIS_ADDRESS_WIDTH_32);
+
+        ZydisDecodedInstruction instruction;
+        if (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address), 16, &instruction)))
+        {
+            if (instruction.mnemonic == ZYDIS_MNEMONIC_JMP)
+            {
+                std::uintptr_t result = 0;
+                ZydisCalcAbsoluteAddress(&instruction, instruction.operands, address, &result);
+
+                return result;
+            }
+        }
+
+        return std::nullopt;
+    }
+    std::optional<std::uint32_t> disasm::get_mneomnic(const std::uintptr_t &address)
+    {
+        ZydisDecoder decoder;
+
+        if constexpr (arch == architecture::x64)
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
+        else
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LEGACY_32, ZYDIS_ADDRESS_WIDTH_32);
+
+        ZydisDecodedInstruction instruction;
+        if (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address), 16, &instruction)))
+        {
+            return instruction.mnemonic;
+        }
+
+        return std::nullopt;
+    }
+
+    std::optional<std::uintptr_t> disasm::read_until(const std::uint32_t &mnemonic, const std::uintptr_t &address, const std::size_t &size)
     {
         ZydisDecoder decoder;
 

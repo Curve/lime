@@ -20,6 +20,9 @@ TEST_CASE("Address utility is tested", "[address]")
 {
     auto address = lime::address(reinterpret_cast<std::uintptr_t>(call_another_function));
 
+    if (address.get_mnemonic() == lime::mnemonic::JMP)
+        address = *address.follow();
+
     auto function_call = address.read_until(lime::mnemonic::CALL);
     REQUIRE(function_call);
 

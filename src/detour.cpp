@@ -23,12 +23,21 @@ namespace lime
         return m_original_func;
     }
 
-    std::unique_ptr<detour> detour::create(const std::uintptr_t &target, const std::uintptr_t &replacement)
+    std::unique_ptr<detour> detour::create(std::uintptr_t target, const std::uintptr_t &replacement)
     {
         auto original_page = page::get_page_at(target);
 
         if (!original_page)
             return nullptr;
+
+        if (original_page->get_protection() == prot::read_only || original_page->get_protection() == prot::read_write ||
+            original_page->get_protection() == prot::read_write_execute || original_page->get_protection() == prot::read_execute)
+        {
+            const auto follow_jump = disasm::follow_if_jump(target);
+
+            if (follow_jump)
+                target = *follow_jump;
+        }
 
         if (!protect(original_page->get_start(), original_page->get_end() - original_page->get_start(), prot::read_write_execute))
             return nullptr;

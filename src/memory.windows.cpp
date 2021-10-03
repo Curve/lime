@@ -51,11 +51,12 @@ std::shared_ptr<std::uintptr_t> lime::allocate_near(const std::uintptr_t &addres
 
     while (VirtualQuery(page_address, &info, sizeof(info)))
     {
+        const auto diff = reinterpret_cast<std::int64_t>(page_address) - static_cast<std::int64_t>(address);
+        if (diff != static_cast<std::int32_t>(diff))
+            break;
+
         if (info.State & MEM_FREE)
         {
-            const auto diff = reinterpret_cast<std::int64_t>(page_address) - static_cast<std::int64_t>(address);
-            if (diff != static_cast<std::int32_t>(diff))
-                continue;
 
             if (allocate_at(reinterpret_cast<std::uintptr_t>(page_address), size, prot))
             {

@@ -32,7 +32,7 @@ namespace lime
       public:
         template <typename target_t, typename replacement_t>
         static std::unique_ptr<detour> create(const target_t &target, const replacement_t &replacement);
-        static std::unique_ptr<detour> create(const std::uintptr_t &target, const std::uintptr_t &replacement);
+        static std::unique_ptr<detour> create(std::uintptr_t target, const std::uintptr_t &replacement);
     };
 } // namespace lime
 

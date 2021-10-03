@@ -27,7 +27,8 @@ namespace lime
         template <typename T> std::optional<T> get_as_safe() const;
 
         std::optional<address> follow() const;
-        std::optional<address> read_until(const std::uint8_t &mnemonic) const;
+        std::optional<std::uint32_t> get_mnemonic() const;
+        std::optional<address> read_until(const std::uint32_t &mnemonic) const;
     };
 } // namespace lime
 

@@ -48,13 +48,21 @@ namespace lime
             const auto result = disasm::follow(m_address);
 
             if (result)
-                return {result};
+                return {*result};
         }
 
         return std::nullopt;
     }
+    std::optional<std::uint32_t> address::get_mnemonic() const
+    {
+        if (get_safe())
+        {
+            return disasm::get_mneomnic(m_address);
+        }
 
-    std::optional<address> address::read_until(const std::uint8_t &mnemonic) const
+        return std::nullopt;
+    }
+    std::optional<address> address::read_until(const std::uint32_t &mnemonic) const
     {
         const auto page = page::get_page_at(m_address);
 
