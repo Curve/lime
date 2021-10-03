@@ -1,6 +1,8 @@
 #include "constants/protection.hpp"
+#include <module.hpp>
 #include <page.hpp>
 #include <sstream>
+#include <utility/address.hpp>
 #include <utility/memory.hpp>
 #include <utility/signature.hpp>
 
@@ -78,7 +80,7 @@ namespace lime
         cond_rtn<find_all> rtn;
 
         if (page.get_protection() != prot::read_only && page.get_protection() != prot::read_write &&
-            page.get_protection() != prot::read_write_execute && page.get_protection() != prot::read_execute)
+            page.get_protection() != prot::read_execute && page.get_protection() != prot::read_write_execute)
             return rtn;
 
         for (auto current = page.get_start(); current < (page.get_end() - m_pattern.size()); current++)
@@ -93,7 +95,7 @@ namespace lime
                 }
                 else
                 {
-                    rtn = current;
+                    rtn = {current};
                     break;
                 }
             }

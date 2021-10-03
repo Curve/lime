@@ -14,9 +14,9 @@ if (NOT MSVC)
 endif()
 
 if (UNIX)
-    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/scan.cpp" "src/*.linux.cpp")
+    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/signature.cpp" "src/address.cpp" "src/*.linux.cpp")
 elseif (WIN32)
-    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/scan.cpp" "src/*.windows.cpp")
+    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/signature.cpp" "src/address.cpp" "src/*.windows.cpp")
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
