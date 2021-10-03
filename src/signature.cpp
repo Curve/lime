@@ -54,7 +54,7 @@ namespace lime
 
         for (const auto &page : page::get_pages())
         {
-            auto found = find_in<find_all>(page);
+            const auto found = find_in<find_all>(page);
             if constexpr (find_all)
             {
                 if (!found.empty())
@@ -85,7 +85,7 @@ namespace lime
 
         for (auto current = page.get_start(); current < (page.get_end() - m_pattern.size()); current++)
         {
-            auto data = read(current, m_pattern.size());
+            const auto data = read(current, m_pattern.size());
 
             if (data && test_sig(data.get(), m_pattern, m_mask))
             {
@@ -114,7 +114,7 @@ namespace lime
         {
             if (page.get_start() >= module.get_start() && page.get_end() <= (module.get_start() + module.get_size()))
             {
-                auto result = find_in<find_all>(page);
+                const auto result = find_in<find_all>(page);
                 if constexpr (find_all)
                 {
                     rtn.insert(rtn.end(), result.begin(), result.end());

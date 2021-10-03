@@ -55,15 +55,10 @@ std::shared_ptr<std::uintptr_t> lime::allocate_near(const std::uintptr_t &addres
     while (true)
     {
         const auto diff = static_cast<std::int64_t>(aligned) - static_cast<std::int64_t>(address);
-        if (diff == static_cast<std::int32_t>(diff))
-        {
-            rtn = mmap(reinterpret_cast<void *>(aligned), size, prot, MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE, -1, 0);
-        }
-        else
-        {
-            if (diff > 0)
-                break;
-        }
+        if (diff != static_cast<std::int32_t>(diff))
+            break;
+
+        rtn = mmap(reinterpret_cast<void *>(aligned), size, prot, MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE, -1, 0);
 
         aligned = (aligned + getpagesize()) & ~(getpagesize() - 1);
         skipped_pages++;
@@ -71,7 +66,7 @@ std::shared_ptr<std::uintptr_t> lime::allocate_near(const std::uintptr_t &addres
 
     if (rtn != reinterpret_cast<void *>(-1))
     {
-        auto allocated_page = reinterpret_cast<std::uintptr_t>(rtn);
+        const auto allocated_page = reinterpret_cast<std::uintptr_t>(rtn);
 
         return {new auto(allocated_page), [size](const std::uintptr_t *data) {
                     free(*data, size);

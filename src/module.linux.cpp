@@ -70,7 +70,7 @@ namespace lime
     std::optional<module> module::get(const std::string &name)
     {
         //? dlinfo doesn't supply us with enough information, that's why we have to rely on dl_iterate_phdr
-        auto modules = get_modules();
+        const auto modules = get_modules();
         auto module = std::find_if(modules.begin(), modules.end(), [&name](const auto &item) { return item.m_name == name; });
 
         if (module != modules.end())
