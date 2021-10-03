@@ -38,6 +38,13 @@ if (LIME_BUILD_TESTS)
     find_package(Catch2 CONFIG REQUIRED)
 
     file(GLOB test_src "tests/*.cpp")
+
+    if (MSVC)
+        set_source_files_properties("tests/detour.test.cpp" PROPERTIES COMPILE_FLAGS /Od)
+    else()
+        set_source_files_properties("tests/detour.test.cpp" PROPERTIES COMPILE_FLAGS -O0)
+    endif()
+
     add_executable(tests ${test_src})
     target_link_libraries(tests PRIVATE Catch2::Catch2 Catch2::Catch2WithMain ${PROJECT_NAME})
     
