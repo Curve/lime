@@ -9,7 +9,7 @@ namespace lime
 
     template <typename T> std::optional<T> address::get_as_safe() const
     {
-        auto safe_address = get_safe();
+        const auto safe_address = get_safe();
         if (safe_address)
         {
             return *reinterpret_cast<T *>(*safe_address);

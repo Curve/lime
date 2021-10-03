@@ -36,7 +36,16 @@ namespace lime
             const auto follow_jump = disasm::follow_if_jump(target);
 
             if (follow_jump)
+            {
                 target = *follow_jump;
+
+                auto new_page = page::get_page_at(target);
+
+                if (!new_page)
+                    return nullptr;
+
+                original_page.emplace(std::move(*new_page));
+            }
         }
 
         if (!protect(original_page->get_start(), original_page->get_end() - original_page->get_start(), prot::read_write_execute))
@@ -50,7 +59,7 @@ namespace lime
         std::vector<std::uint8_t> original_code(buffer, buffer + required_size);
         delete[] buffer;
 
-        auto is_relocateable = disasm::is_far_relocateable(original_code);
+        const auto is_relocateable = disasm::is_far_relocateable(original_code);
         auto estimated_size = disasm::get_estimated_size(original_code, false);
         auto trampoline_page = allocate_near(target, estimated_size, prot::read_write_execute);
 
@@ -75,7 +84,7 @@ namespace lime
 
                 if (trampoline_page)
                 {
-                    auto fixed = disasm::build_code(original_code, replacement, target, *trampoline_page);
+                    const auto fixed = disasm::build_code(original_code, replacement, target, *trampoline_page);
                     if (fixed)
                     {
                         fixed_code = *fixed;
@@ -86,7 +95,7 @@ namespace lime
         }
         else
         {
-            auto fixed = disasm::build_code(original_code, replacement, target, *trampoline_page);
+            const auto fixed = disasm::build_code(original_code, replacement, target, *trampoline_page);
             if (fixed)
             {
                 fixed_code = *fixed;
