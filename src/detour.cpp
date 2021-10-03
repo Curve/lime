@@ -44,7 +44,7 @@ namespace lime
                 if (!new_page)
                     return nullptr;
 
-                original_page.emplace(std::move(*new_page));
+                original_page = *new_page;
             }
         }
 
@@ -137,7 +137,7 @@ namespace lime
             rtn->m_replacement = replacement;
             rtn->m_trampoline = trampoline_page;
             rtn->m_original_code = original_code;
-            rtn->m_original_page = std::make_unique<lime::page>(std::move(*original_page));
+            rtn->m_original_page = std::make_unique<lime::page>(*original_page);
             rtn->m_original_func = *trampoline_page + (arch == architecture::x64 ? 6 + sizeof(std::uintptr_t) : 1 + sizeof(std::uintptr_t));
         }
 

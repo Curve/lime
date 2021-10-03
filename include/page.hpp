@@ -12,11 +12,9 @@ namespace lime
 
       private:
         page();
-        std::unique_ptr<impl> m_impl;
 
       public:
-        ~page();
-        page(page &&) noexcept;
+        page(const page &);
 
       private:
         std::uint8_t m_prot;

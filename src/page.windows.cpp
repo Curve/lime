@@ -3,13 +3,8 @@
 
 namespace lime
 {
-    struct page::impl
-    {
-    };
-
-    page::~page() = default;
     page::page() : m_prot(0) {}
-    page::page(page &&) noexcept = default;
+    page::page(const page &) = default;
 
     std::vector<page> page::get_pages()
     {
@@ -26,7 +21,7 @@ namespace lime
                 page.m_start = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
                 page.m_end = page.m_start + info.RegionSize;
 
-                rtn.emplace_back(std::move(page));
+                rtn.emplace_back(page);
             }
 
             address = reinterpret_cast<void *>(reinterpret_cast<std::uintptr_t>(info.BaseAddress) + info.RegionSize);

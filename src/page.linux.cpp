@@ -15,9 +15,8 @@ namespace lime
         static std::optional<page> parse_page(const std::string &);
     };
 
-    page::~page() = default;
     page::page() : m_prot(0) {}
-    page::page(page &&) noexcept = default;
+    page::page(const page &) = default;
 
     std::optional<page> page::impl::parse_page(const std::string &line)
     {
@@ -59,7 +58,7 @@ namespace lime
                 auto page = impl::parse_page(line);
 
                 if (page)
-                    pages.emplace_back(std::move(*page));
+                    pages.emplace_back(*page);
             }
         }
 
