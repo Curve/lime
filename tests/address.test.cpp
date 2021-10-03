@@ -14,7 +14,7 @@ void call_another_function()
     another_function();
 }
 
-int some_test_int = 10;
+const int some_test_int = 10;
 
 TEST_CASE("Address utility is tested", "[address]")
 {

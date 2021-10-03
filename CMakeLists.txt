@@ -41,6 +41,7 @@ if (LIME_BUILD_TESTS)
 
     if (MSVC)
         set_source_files_properties("tests/detour.test.cpp" PROPERTIES COMPILE_FLAGS /Od)
+        set_source_files_properties("tests/address.test.cpp" PROPERTIES COMPILE_FLAGS /Od)
     else()
         set_source_files_properties("tests/detour.test.cpp" PROPERTIES COMPILE_FLAGS -O0)
     endif()
