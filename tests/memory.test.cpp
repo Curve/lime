@@ -1,4 +1,3 @@
-#define CONFIG_CATCH_MAIN
 #include <catch2/catch.hpp>
 #include <constants/protection.hpp>
 #include <page.hpp>

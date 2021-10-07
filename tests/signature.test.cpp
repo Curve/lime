@@ -1,4 +1,3 @@
-#define CONFIG_CATCH_MAIN
 #include <catch2/catch.hpp>
 #include <module.hpp>
 #include <page.hpp>
