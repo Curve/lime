@@ -18,7 +18,7 @@ namespace lime
         ZydisDecodedInstruction instruction;
         if (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address), 16, &instruction)))
         {
-            std::uintptr_t result = 0;
+            ZyanU64 result = 0;
             ZydisCalcAbsoluteAddress(&instruction, instruction.operands, address, &result);
 
             return result;
