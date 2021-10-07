@@ -79,8 +79,7 @@ namespace lime
     {
         cond_rtn<find_all> rtn;
 
-        if (page.get_protection() != prot::read_only && page.get_protection() != prot::read_write &&
-            page.get_protection() != prot::read_execute && page.get_protection() != prot::read_write_execute)
+        if (page.get_protection() == prot::none && page.get_protection() == prot::execute)
             return rtn;
 
         for (auto current = page.get_start(); current < (page.get_end() - m_pattern.size()); current++)

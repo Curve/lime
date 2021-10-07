@@ -32,8 +32,7 @@ namespace lime
         if (!page)
             return std::nullopt;
 
-        if (page->get_protection() == prot::read_only || page->get_protection() == prot::read_write ||
-            page->get_protection() == prot::read_write_execute || page->get_protection() == prot::read_execute)
+        if (page->get_protection() != prot::none && page->get_protection() != prot::execute)
         {
             return m_address;
         }
@@ -57,7 +56,7 @@ namespace lime
     {
         if (get_safe())
         {
-            return disasm::get_mneomnic(m_address);
+            return disasm::get_mnemonic(m_address);
         }
 
         return std::nullopt;
@@ -71,8 +70,7 @@ namespace lime
 
         const auto remaining = page->get_end() - m_address;
 
-        if (page->get_protection() == prot::read_only || page->get_protection() == prot::read_write ||
-            page->get_protection() == prot::read_write_execute || page->get_protection() == prot::read_execute)
+        if (page->get_protection() != prot::none && page->get_protection() != prot::execute)
         {
             const auto result = disasm::read_until(mnemonic, m_address, remaining);
 
