@@ -12,6 +12,7 @@ namespace lime
 #if defined(__linux__)
         enum
         {
+            none = PROT_NONE,
             read_only = PROT_READ,
             read_write = PROT_WRITE | PROT_READ,
 
@@ -22,6 +23,7 @@ namespace lime
 #elif defined(_WIN32)
         enum
         {
+            none = PAGE_NOACCESS,
             read_only = PAGE_READONLY,
             read_write = PAGE_READWRITE,
 

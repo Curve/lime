@@ -15,7 +15,6 @@ namespace lime
 
       public:
         ~detour();
-        detour(detour &&) noexcept;
 
       private:
         std::uintptr_t m_target;

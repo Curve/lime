@@ -1,5 +1,6 @@
 #include "disasm/disasm.hpp"
 #include <constants/architecture.hpp>
+#include <constants/mnemonics.hpp>
 #include <constants/protection.hpp>
 #include <cstring>
 #include <hooks/detour.hpp>
@@ -8,13 +9,11 @@
 namespace lime
 {
     detour::detour() = default;
-    detour::detour(detour &&) noexcept = default;
-
     detour::~detour()
     {
         if (protect(m_original_page->get_start(), m_original_page->get_end() - m_original_page->get_start(), prot::read_write_execute))
         {
-            memcpy(reinterpret_cast<void *>(m_target), m_original_code.data(), m_original_code.size());
+            write(m_target, m_original_code.data(), m_original_code.size());
             protect(m_original_page->get_start(), m_original_page->get_end() - m_original_page->get_start(), m_original_page->get_protection());
         }
     }
@@ -30,21 +29,23 @@ namespace lime
         if (!original_page)
             return nullptr;
 
-        if (original_page->get_protection() == prot::read_only || original_page->get_protection() == prot::read_write ||
-            original_page->get_protection() == prot::read_write_execute || original_page->get_protection() == prot::read_execute)
+        if (original_page->get_protection() != prot::none && original_page->get_protection() != prot::execute)
         {
-            const auto follow_jump = disasm::follow_if_jump(target);
-
-            if (follow_jump)
+            if (disasm::get_mnemonic(target) == mnemonic::JMP)
             {
-                target = *follow_jump;
+                auto follow = disasm::follow(target);
 
-                auto new_page = page::get_page_at(target);
+                if (follow)
+                {
+                    target = *follow;
 
-                if (!new_page)
-                    return nullptr;
+                    auto new_page = page::get_page_at(target);
 
-                original_page = *new_page;
+                    if (!new_page)
+                        return nullptr;
+
+                    original_page = *new_page;
+                }
             }
         }
 
@@ -53,11 +54,8 @@ namespace lime
 
         auto required_size = disasm::get_required_prologue_length(target, 6);
 
-        auto *buffer = new std::uint8_t[required_size];
-        memcpy(buffer, reinterpret_cast<void *>(target), required_size);
-
-        std::vector<std::uint8_t> original_code(buffer, buffer + required_size);
-        delete[] buffer;
+        auto raw_original = read(target, required_size);
+        std::vector<std::uint8_t> original_code(raw_original.get(), raw_original.get() + required_size);
 
         const auto is_relocateable = disasm::is_far_relocateable(original_code);
         auto estimated_size = disasm::get_estimated_size(original_code, false);
@@ -73,11 +71,8 @@ namespace lime
                 required_size = disasm::get_required_prologue_length(target, arch == architecture::x64 ? (6 + sizeof(std::uintptr_t))
                                                                                                        : (1 + sizeof(std::uintptr_t)));
 
-                buffer = new std::uint8_t[required_size];
-                memcpy(buffer, reinterpret_cast<void *>(target), required_size);
-
-                original_code = {buffer, buffer + required_size};
-                delete[] buffer;
+                raw_original = read(target, required_size);
+                original_code = {raw_original.get(), raw_original.get() + required_size};
 
                 estimated_size = disasm::get_estimated_size(original_code, true);
                 trampoline_page = allocate(estimated_size, prot::read_write_execute);
@@ -105,7 +100,7 @@ namespace lime
         std::unique_ptr<detour> rtn;
         if (!fixed_code.empty() && fixed_code.size() <= estimated_size)
         {
-            memcpy(reinterpret_cast<void *>(*trampoline_page), fixed_code.data(), fixed_code.size());
+            write(*trampoline_page, fixed_code.data(), fixed_code.size());
 
             if (is_near || arch == architecture::x86)
             {
@@ -114,7 +109,7 @@ namespace lime
                 hook_code.front() = 0xE9;
                 *reinterpret_cast<std::int32_t *>(hook_code.data() + 1) = static_cast<std::int32_t>(*trampoline_page - target) - 5;
 
-                memcpy(reinterpret_cast<void *>(target), hook_code.data(), hook_code.size());
+                write(target, hook_code.data(), hook_code.size());
             }
             else if (!is_near)
             {
@@ -128,7 +123,7 @@ namespace lime
                 hook_code[5] = 0x00;
                 *reinterpret_cast<std::uintptr_t *>(hook_code.data() + 6) = *trampoline_page;
 
-                memcpy(reinterpret_cast<void *>(target), hook_code.data(), hook_code.size());
+                write(target, hook_code.data(), hook_code.size());
             }
 
             rtn = std::unique_ptr<detour>(new detour);
