@@ -2,6 +2,7 @@
 #include <Zydis/Zydis.h>
 #include <constants/architecture.hpp>
 #include <cstring>
+#include <utility/memory.hpp>
 
 namespace lime
 {
@@ -26,30 +27,7 @@ namespace lime
         return std::nullopt;
     }
 
-    std::optional<std::uintptr_t> disasm::follow_if_jump(const std::uintptr_t &address)
-    {
-        ZydisDecoder decoder;
-
-        if constexpr (arch == architecture::x64)
-            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
-        else
-            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LEGACY_32, ZYDIS_ADDRESS_WIDTH_32);
-
-        ZydisDecodedInstruction instruction;
-        if (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address), 16, &instruction)))
-        {
-            if (instruction.mnemonic == ZYDIS_MNEMONIC_JMP)
-            {
-                std::uintptr_t result = 0;
-                ZydisCalcAbsoluteAddress(&instruction, instruction.operands, address, &result);
-
-                return result;
-            }
-        }
-
-        return std::nullopt;
-    }
-    std::optional<std::uint32_t> disasm::get_mneomnic(const std::uintptr_t &address)
+    std::optional<std::uint32_t> disasm::get_mnemonic(const std::uintptr_t &address)
     {
         ZydisDecoder decoder;
 
@@ -79,8 +57,8 @@ namespace lime
         std::size_t offset = 0;
         ZydisDecodedInstruction instruction;
 
-        while (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address + offset),
-                                                     std::min<std::size_t>(16, size - offset), &instruction)))
+        while (ZYAN_SUCCESS(
+            ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address + offset), std::min<std::size_t>(16, size - offset), &instruction)))
         {
             if (instruction.mnemonic == mnemonic)
             {
@@ -95,6 +73,9 @@ namespace lime
 
     bool disasm::is_far_relocateable(const std::vector<std::uint8_t> &code)
     {
+        if constexpr (arch == architecture::x86)
+            return true;
+
         ZydisDecoder decoder;
         ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_ADDRESS_WIDTH_64);
 
@@ -184,10 +165,10 @@ namespace lime
         ZydisDecodedInstruction instruction;
         constexpr auto jump_table_entry_size = arch == architecture::x64 ? (sizeof(std::uintptr_t) + 6) : (sizeof(std::uintptr_t) + 1);
 
-        auto *raw_code = new std::uint8_t[code.size()];
-        memcpy(raw_code, code.data(), code.size());
+        auto raw_code = std::make_unique<char[]>(code.size());
+        memcpy(raw_code.get(), code.data(), code.size());
 
-        while (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, raw_code + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction)))
+        while (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, raw_code.get() + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction)))
         {
             if (instruction.attributes & ZYDIS_ATTRIB_IS_RELATIVE)
             {
@@ -227,18 +208,16 @@ namespace lime
         std::size_t offset = 0;
         ZydisDecodedInstruction instruction;
 
-        auto *raw_code = new std::uint8_t[code.size()];
-        memcpy(raw_code, code.data(), code.size());
+        auto raw_code = std::make_unique<char[]>(code.size());
+        memcpy(raw_code.get(), code.data(), code.size());
 
         std::vector<std::uint8_t> jump_table;
         constexpr auto jmp_size = arch == architecture::x64 ? 6 + sizeof(std::uintptr_t) : 1 + sizeof(std::uintptr_t);
         const auto diff = static_cast<std::int64_t>(old_pos) - static_cast<std::int64_t>(new_pos) - static_cast<std::int64_t>(jmp_size);
 
-        bool success = true;
-
-        while (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, raw_code + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction)))
+        while (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, raw_code.get() + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction)))
         {
-            auto pos = reinterpret_cast<std::uintptr_t>(raw_code + offset);
+            auto pos = reinterpret_cast<std::uintptr_t>(raw_code.get() + offset);
 
             if (instruction.attributes & ZYDIS_ATTRIB_IS_RELATIVE)
             {
@@ -246,8 +225,7 @@ namespace lime
                 {
                     if (!compensate(pos + instruction.raw.disp.offset, instruction.raw.disp.size, diff))
                     {
-                        success = false;
-                        break;
+                        return std::nullopt;
                     }
                 }
 
@@ -284,20 +262,17 @@ namespace lime
                                         static_cast<std::intptr_t>(new_pos + code.size() + 1 + sizeof(std::intptr_t) + jump_table.size()) - 5;
                                 }
 
-                                const auto disp =
-                                    static_cast<std::int64_t>(-instruction.raw.imm[i].value.s +
-                                                              (code.size() - offset - instruction.length + jmp_size + jump_table_offset + 5));
+                                const auto disp = static_cast<std::int64_t>(
+                                    -instruction.raw.imm[i].value.s + (code.size() - offset - instruction.length + jmp_size + jump_table_offset + 5));
 
                                 if (!compensate(pos + instruction.raw.imm[i].offset, instruction.raw.imm[i].size, disp))
                                 {
-                                    success = false;
-                                    goto break_loop;
+                                    return std::nullopt;
                                 }
                             }
                             else
                             {
-                                success = false;
-                                goto break_loop;
+                                return std::nullopt;
                             }
                         }
                     }
@@ -307,14 +282,7 @@ namespace lime
             offset += instruction.length;
         }
 
-    break_loop:
-        std::vector<std::uint8_t> rtn(raw_code, raw_code + code.size());
-        delete[] raw_code;
-
-        if (!success)
-        {
-            return std::nullopt;
-        }
+        std::vector<std::uint8_t> rtn(raw_code.get(), raw_code.get() + code.size());
 
         if constexpr (arch == architecture::x64)
         {
