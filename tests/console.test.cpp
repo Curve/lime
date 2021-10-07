@@ -3,6 +3,10 @@
 #include <iostream>
 #include <utility/console.hpp>
 
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
+
 TEST_CASE("Console utility is tested", "[console]")
 {
     lime::console::redirect_to_file("test.txt");
@@ -39,5 +43,14 @@ TEST_CASE("Console utility is tested", "[console]")
 
     lime::console::restore();
     tmp_file.close();
+#else
+    FreeConsole();
+    lime::console::alloc_console("test");
+
+    std::cout << "Test" << std::endl;
+
+    TCHAR title[256];
+    GetConsoleTitle(title, 256);
+    REQUIRE(strcmp(title, "test") == 0);
 #endif
 }
