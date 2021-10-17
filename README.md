@@ -3,7 +3,7 @@
 </p>
 
 # Introduction
-Lime is a *cross-platform* framework that is focused on game modding and tries to provide you with useful **cross-platform** features for your journey.
+Lime is a *cross-platform* framework that is focused on game modding and tries to provide you with useful features for your journey.
 
 > This library is meant to be used in mods that get loaded into the target process. Remote usage is not yet available but may be in the future, albeit with low priority.
 
@@ -57,3 +57,34 @@ Usage: `./listen.sh (name)`
 # Documentation
 The documentation can be found [here](https://github.com/Curve/lime/wiki/Documentation).  
 If you want code examples you can take a look at the [tests](tests/).
+
+# Installation
+- FetchContent
+  ```cmake
+  include(FetchContent)
+
+  FetchContent_Declare(
+        lime
+        GIT_REPOSITORY "https://github.com/Curve/lime"
+  )
+
+  FetchContent_MakeAvailable(lime)
+
+  target_link_libraries(<YourLibrary> lime)
+  ```
+
+- Git Submodule
+  ```bash
+  git submodule add "https://github.com/Curve/lime"
+  ```
+  ```cmake
+  # CMakeLists.txt
+  add_subdirectory("<path_to_lime>")
+  ```
+
+# Requirements
+
+| Operating System | Requirements |
+| ---------------- | ------------ |
+| Windows          | Windows >10  |
+| Linux            | X11          |
