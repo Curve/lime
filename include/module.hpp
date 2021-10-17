@@ -27,7 +27,10 @@ namespace lime
         std::string get_name() const;
         std::size_t get_size() const;
         std::uintptr_t get_start() const;
+
         std::uintptr_t get_symbol(const std::string &) const;
+        std::optional<std::uintptr_t> find_symbol(const std::string &) const;
+        std::vector<std::pair<std::string, std::uintptr_t>> get_symbols() const;
 
       public:
         static std::vector<module> get_modules();
