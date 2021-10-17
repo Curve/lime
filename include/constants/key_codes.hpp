@@ -1,15 +1,17 @@
 #pragma once
-#ifdef __linux__
+#if defined(__linux__)
 #define XK_LATIN1 1
 #define XK_MISCELLANY 1
 #include <X11/keysymdef.h>
+#elif defined(_WIN32)
+#include <Windows.h>
 #endif
 
 namespace lime
 {
     namespace key
     {
-#ifdef __linux__
+#if defined(__linux__)
         enum : int
         {
             a = XK_A,
@@ -75,6 +77,73 @@ namespace lime
             numpad_9 = XK_KP_9,
             plus = XK_plus,
             minus = XK_minus,
+        };
+#elif defined(_WIN32)
+        enum : int
+        {
+            a = 'A',
+            b = 'B',
+            c = 'C',
+            d = 'D',
+            e = 'E',
+            f = 'F',
+            g = 'G',
+            h = 'H',
+            i = 'I',
+            j = 'J',
+            k = 'K',
+            l = 'L',
+            m = 'M',
+            n = 'N',
+            o = 'O',
+            p = 'P',
+            q = 'Q',
+            r = 'R',
+            s = 'S',
+            t = 'T',
+            u = 'U',
+            v = 'V',
+            w = 'W',
+            x = 'X',
+            y = 'Y',
+            z = 'Z',
+            alt = VK_MENU,
+            shift = VK_SHIFT,
+            ctrl = VK_CONTROL,
+            space = VK_SPACE,
+            rtn = VK_RETURN,
+            F1 = VK_F1,
+            F2 = VK_F2,
+            F3 = VK_F3,
+            F4 = VK_F4,
+            F5 = VK_F5,
+            F6 = VK_F6,
+            F7 = VK_F7,
+            F8 = VK_F8,
+            F9 = VK_F9,
+            F10 = VK_F10,
+            F11 = VK_F11,
+            F12 = VK_F12,
+            insert = VK_INSERT,
+            del = VK_DELETE,
+            up = VK_UP,
+            down = VK_DOWN,
+            left = VK_LEFT,
+            right = VK_RIGHT,
+            tab = VK_TAB,
+            escape = VK_ESCAPE,
+            numpad_0 = VK_NUMPAD0,
+            numpad_1 = VK_NUMPAD1,
+            numpad_2 = VK_NUMPAD2,
+            numpad_3 = VK_NUMPAD3,
+            numpad_4 = VK_NUMPAD4,
+            numpad_5 = VK_NUMPAD5,
+            numpad_6 = VK_NUMPAD6,
+            numpad_7 = VK_NUMPAD7,
+            numpad_8 = VK_NUMPAD8,
+            numpad_9 = VK_NUMPAD9,
+            plus = VK_OEM_PLUS,
+            minus = VK_OEM_MINUS,
         };
 #endif
     } // namespace key
