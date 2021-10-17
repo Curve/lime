@@ -86,7 +86,8 @@ If you want code examples you can take a look at the [tests](tests/).
 
 # ✅ Requirements
 
-| Operating System | Requirements |
-| ---------------- | ------------ |
-| Windows          | Windows >10  |
-| Linux            | X11          |
+- C++17 (or newer) compiler
+- Windows
+  - Any windows version above or equal to 10
+- Linux
+  - In order for hotkeys to work you'll need X11
