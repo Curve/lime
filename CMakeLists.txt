@@ -75,6 +75,8 @@ if (UNIX)
     find_package(X11 REQUIRED)
     target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${X11_INCLUDE_DIR})
     target_link_libraries(${PROJECT_NAME} PRIVATE dl ${X11_LIBRARIES} ${X11_XTest_LIB})
+elseif(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE Imagehlp)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Zydis)
