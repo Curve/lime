@@ -35,7 +35,7 @@ jobs:
           sudo cmake --build build/ --target install
 
       - name: Compile
-        run: "mkdir build && cd build && cmake .. -DLIME_BUILD_TESTS=ON && cmake --build . --config Debug"
+        run: "mkdir build && cd build && cmake .. -DLIME_BUILD_TESTS=ON -DLIME_IS_CI=ON && cmake --build . --config Debug"
 
       - name: Run Tests
         run: "./build/tests"

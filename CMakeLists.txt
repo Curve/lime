@@ -5,6 +5,7 @@ project(lime LANGUAGES CXX VERSION 1.0)
 # Library options
 # --------------------------------------------------------------------------------------------------------
 option(LIME_BUILD_TESTS "Run tests" OFF)
+option(LIME_IS_CI "Determines if lime is built from the GitHub CI" OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # Create library
@@ -37,6 +38,11 @@ if (LIME_BUILD_TESTS)
     message(STATUS "Building tests")
     find_package(Catch2 CONFIG REQUIRED)
 
+    if (LIME_IS_CI)
+        add_definitions(-DIS_CI=1)
+        message(STATUS "Building from CI, disabling some tests")
+    endif()
+    
     file(GLOB test_src "tests/*.cpp")
 
     if (MSVC)
