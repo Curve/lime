@@ -17,13 +17,18 @@ int int_rtn_hook2(int param)
 
 TEST_CASE("Detours are tested", "[detours]")
 {
-    int_rtn_detour = lime::detour::create(reinterpret_cast<std::uintptr_t>(&int_rtn_original), reinterpret_cast<std::uintptr_t>(&int_rtn_hook));
+    lime::detour_status status{};
+
+    int_rtn_detour = lime::detour::create(reinterpret_cast<std::uintptr_t>(&int_rtn_original), reinterpret_cast<std::uintptr_t>(&int_rtn_hook), status);
+    REQUIRE(status == lime::detour_status::success);
 
     REQUIRE(int_rtn_original(10) == 12);
     int_rtn_detour.reset();
     REQUIRE(int_rtn_original(10) == 11);
 
-    int_rtn_detour = lime::detour::create(int_rtn_original, int_rtn_hook2);
+    int_rtn_detour = lime::detour::create(int_rtn_original, int_rtn_hook2, status);
+    REQUIRE(status == lime::detour_status::success);
+
     REQUIRE(int_rtn_original(10) == 9);
     int_rtn_detour.reset();
     REQUIRE(int_rtn_original(10) == 11);

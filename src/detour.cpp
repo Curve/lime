@@ -24,10 +24,18 @@ namespace lime
 
     std::unique_ptr<detour> detour::create(std::uintptr_t target, const std::uintptr_t &replacement)
     {
+        [[maybe_unused]] detour_status status{};
+        return create(target, replacement, status);
+    }
+    std::unique_ptr<detour> detour::create(std::uintptr_t target, const std::uintptr_t &replacement, detour_status &status)
+    {
         auto original_page = page::get_page_at(target);
 
         if (!original_page)
+        {
+            status = detour_status::invalid_page;
             return nullptr;
+        }
 
         if (original_page->get_protection() != prot::none && original_page->get_protection() != prot::execute)
         {
@@ -42,7 +50,10 @@ namespace lime
                     auto new_page = page::get_page_at(target);
 
                     if (!new_page)
+                    {
+                        status = detour_status::invalid_page;
                         return nullptr;
+                    }
 
                     original_page = *new_page;
                 }
@@ -50,7 +61,10 @@ namespace lime
         }
 
         if (!protect(original_page->get_start(), original_page->get_end() - original_page->get_start(), prot::read_write_execute))
+        {
+            status = detour_status::could_not_protect;
             return nullptr;
+        }
 
         auto required_size = disasm::get_required_prologue_length(target, 6);
 
@@ -126,6 +140,7 @@ namespace lime
                 write(target, hook_code.data(), hook_code.size());
             }
 
+            status = detour_status::success;
             rtn = std::unique_ptr<detour>(new detour);
 
             rtn->m_target = target;
@@ -134,6 +149,10 @@ namespace lime
             rtn->m_original_code = original_code;
             rtn->m_original_page = std::make_unique<lime::page>(*original_page);
             rtn->m_original_func = *trampoline_page + (arch == architecture::x64 ? 6 + sizeof(std::uintptr_t) : 1 + sizeof(std::uintptr_t));
+        }
+        else
+        {
+            status = detour_status::could_not_relocate;
         }
 
         protect(original_page->get_start(), original_page->get_end() - original_page->get_start(), original_page->get_protection());

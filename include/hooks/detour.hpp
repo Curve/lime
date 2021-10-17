@@ -5,6 +5,14 @@
 
 namespace lime
 {
+    enum class detour_status
+    {
+        success,
+        invalid_page,
+        could_not_protect,
+        could_not_relocate,
+    };
+
     class detour
     {
         template <typename type_t> //
@@ -32,6 +40,10 @@ namespace lime
         template <typename target_t, typename replacement_t>
         static std::unique_ptr<detour> create(const target_t &target, const replacement_t &replacement);
         static std::unique_ptr<detour> create(std::uintptr_t target, const std::uintptr_t &replacement);
+
+        template <typename target_t, typename replacement_t>
+        static std::unique_ptr<detour> create(const target_t &target, const replacement_t &replacement, detour_status &status);
+        static std::unique_ptr<detour> create(std::uintptr_t target, const std::uintptr_t &replacement, detour_status &status);
     };
 } // namespace lime
 
