@@ -66,7 +66,9 @@ option(ZYDIS_BUILD_EXAMPLES "" OFF)
 add_subdirectory("lib/zydis")
 
 if (UNIX)
-    target_link_libraries(${PROJECT_NAME} PRIVATE dl)
+    find_package(X11 REQUIRED)
+    target_include_directories(${PROJECT_NAME} SYSTEM PRIVATE ${X11_INCLUDE_DIR})
+    target_link_libraries(${PROJECT_NAME} PRIVATE dl ${X11_LIBRARIES} ${X11_XTest_LIB})
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Zydis)
