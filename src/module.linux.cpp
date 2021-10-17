@@ -9,6 +9,7 @@ namespace lime
     {
         void *handle;
         dl_phdr_info info;
+        void iterate_symbols(const std::function<bool(const std::string &)> &) const;
     };
 
     module::~module() = default;
@@ -132,8 +133,7 @@ namespace lime
 
         while (true)
         {
-            auto *chainEntry = reinterpret_cast<std::uint32_t *>((chainBaseAddress + (lastSymbol - header->symoffset) * sizeof(std::uint32_t)));
-
+            auto *chainEntry = reinterpret_cast<std::uint32_t *>(chainBaseAddress + (lastSymbol - header->symoffset) * sizeof(std::uint32_t));
             lastSymbol++;
 
             if (*chainEntry & 1)
@@ -145,15 +145,13 @@ namespace lime
         return lastSymbol;
     }
 
-    std::vector<std::pair<std::string, std::uintptr_t>> module::get_symbols() const
+    void module::impl::iterate_symbols(const std::function<bool(const std::string &)> &callback) const
     {
-        std::vector<std::pair<std::string, std::uintptr_t>> rtn;
-
-        for (auto i = 0u; m_impl->info.dlpi_phnum > i; i++)
+        for (auto i = 0u; info.dlpi_phnum > i; i++)
         {
-            if (m_impl->info.dlpi_phdr[i].p_type == PT_DYNAMIC)
+            if (info.dlpi_phdr[i].p_type == PT_DYNAMIC)
             {
-                auto *dyn = reinterpret_cast<ElfW(Dyn) *>(m_impl->info.dlpi_addr + m_impl->info.dlpi_phdr[i].p_vaddr);
+                auto *dyn = reinterpret_cast<ElfW(Dyn) *>(info.dlpi_addr + info.dlpi_phdr[i].p_vaddr);
 
                 char *string_table{};
                 ElfW(Sym *) sym_entry{};
@@ -181,11 +179,11 @@ namespace lime
 
                         for (auto sym_index = 0u; sym_index < symbol_count; sym_index++)
                         {
-                            std::pair<std::string, std::uintptr_t> entry;
-                            entry.first = std::string(&string_table[sym_entry[sym_index].st_name]);
-                            entry.second = reinterpret_cast<std::uintptr_t>(dlsym(m_impl->handle, entry.first.c_str()));
-
-                            rtn.emplace_back(entry);
+                            if (sym_entry[sym_index].st_name && sym_entry[sym_index].st_other == 0)
+                            {
+                                if (callback(&string_table[sym_entry[sym_index].st_name]))
+                                    return;
+                            }
                         }
                     }
 
@@ -193,18 +191,40 @@ namespace lime
                 }
             }
         }
+    }
 
-        return rtn;
+    std::vector<std::pair<std::string, std::uintptr_t>> module::get_symbols() const
+    {
+        if (m_impl)
+        {
+            std::vector<std::pair<std::string, std::uintptr_t>> rtn;
+            m_impl->iterate_symbols([&](const std::string &name) {
+                rtn.emplace_back(std::make_pair(name, get_symbol(name)));
+                return false;
+            });
+
+            return rtn;
+        }
+
+        return {};
     }
 
     std::optional<std::uintptr_t> module::find_symbol(const std::string &name) const
     {
-        auto symbols = get_symbols();
-        auto symbol = std::find_if(symbols.begin(), symbols.end(), [&name](const auto &item) { return item.first.find(name) != std::string::npos; });
-
-        if (symbol != symbols.end())
+        if (m_impl)
         {
-            return symbol->second;
+            std::uintptr_t rtn{};
+            m_impl->iterate_symbols([&](const std::string &module_name) {
+                if (name == module_name)
+                {
+                    rtn = get_symbol(name);
+                    return true;
+                }
+
+                return false;
+            });
+
+            return rtn;
         }
 
         return std::nullopt;
