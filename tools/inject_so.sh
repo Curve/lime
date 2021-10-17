@@ -16,7 +16,7 @@ function is_number
 
 param_num="$#"
 if [ $param_num -lt 2 ]; then
-    print "${colors[2]}" "Too few arguments provided\nUsage: load <process_name> <library>\n"
+    print "${colors[2]}" "Too few arguments provided\nUsage: <process_name> <library>\n"
     exit 1
 fi
 
