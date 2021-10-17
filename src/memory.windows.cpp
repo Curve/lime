@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <cstring>
+#include <memoryapi.h>
 #include <utility/memory.hpp>
 
 std::unique_ptr<char[]> lime::read(const std::uintptr_t &address, const std::size_t &size)
@@ -46,25 +47,32 @@ bool lime::allocate_at(const std::uintptr_t &address, const std::size_t &size, c
 
 std::shared_ptr<std::uintptr_t> lime::allocate_near(const std::uintptr_t &address, const std::size_t &size, const std::uint8_t &prot)
 {
-    MEMORY_BASIC_INFORMATION info;
-    void *page_address = reinterpret_cast<void *>(address);
+    MEM_ADDRESS_REQUIREMENTS requirements{};
+    MEM_EXTENDED_PARAMETER param{};
 
-    while (VirtualQuery(page_address, &info, sizeof(info)))
+    SYSTEM_INFO si{};
+    GetSystemInfo(&si);
+    auto allocation_granularity = si.dwAllocationGranularity;
+
+    auto min = static_cast<std::intptr_t>(address - INT32_MAX);
+    min += (allocation_granularity - (min % allocation_granularity));
+
+    auto max = static_cast<std::intptr_t>(address + INT32_MAX);
+    max -= (max % allocation_granularity) + 1;
+
+    requirements.Alignment = 0;
+    requirements.LowestStartingAddress = min < 0 ? nullptr : reinterpret_cast<void *>(min);
+    requirements.HighestEndingAddress = reinterpret_cast<void *>(max);
+
+    param.Type = MemExtendedParameterAddressRequirements;
+    param.Pointer = &requirements;
+
+    auto virtual_alloc_2 = reinterpret_cast<decltype(VirtualAlloc2) *>(GetProcAddress(LoadLibraryA("kernelbase.dll"), "VirtualAlloc2"));
+    auto *allocated = virtual_alloc_2(GetCurrentProcess(), nullptr, size, MEM_COMMIT | MEM_RESERVE, prot, &param, 1);
+
+    if (allocated)
     {
-        const auto diff = reinterpret_cast<std::int64_t>(page_address) - static_cast<std::int64_t>(address);
-        if (diff != static_cast<std::int32_t>(diff))
-            break;
-
-        if (info.State & MEM_FREE)
-        {
-
-            if (allocate_at(reinterpret_cast<std::uintptr_t>(page_address), size, prot))
-            {
-                return {new auto(reinterpret_cast<std::uintptr_t>(page_address)), [size](auto *data) { free(*data, size); }};
-            }
-        }
-
-        page_address = reinterpret_cast<void *>(reinterpret_cast<std::uintptr_t>(info.BaseAddress) + info.RegionSize);
+        return {new auto(reinterpret_cast<std::uintptr_t>(allocated)), [size](auto *data) { free(*data, size); }};
     }
 
     return nullptr;
