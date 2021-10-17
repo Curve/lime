@@ -215,9 +215,9 @@ namespace lime
         {
             std::uintptr_t rtn{};
             m_impl->iterate_symbols([&](const std::string &module_name) {
-                if (name == module_name)
+                if (module_name.find(name) != std::string::npos)
                 {
-                    rtn = get_symbol(name);
+                    rtn = get_symbol(module_name);
                     return true;
                 }
 
