@@ -2,12 +2,12 @@
     <img src="assets/lime.svg" width=400>
 </p>
 
-# Introduction
+# 👋 Introduction
 Lime is a *cross-platform* framework that is focused on game modding and tries to provide you with useful features for your journey.
 
 > This library is meant to be used in mods that get loaded into the target process. Remote usage is not yet available but may be in the future, albeit with low priority.
 
-# Features
+# 🗒️ Features
 - Detours <sub><sup>(x86 & x64)</sub></sup>
 - Memory utility
   - Read
@@ -44,7 +44,7 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
 
 > ² The keyboard utility is meant to be a cross-platform `GetAsyncKeyState`, on windows it will only serve as a small abstraction to `GetAsyncKeyState`.
 
-# Tools <sub><sup>(Linux only)</sub></sup>
+# 🧰 Tools <sub><sup>(Linux only)</sub></sup>
 ### `inject_so.sh`
 Allows you to inject a shared object file into a process.  
 Usage: `./inject_so.sh <process_name/process_id> <library_path> (--unload)`
@@ -54,11 +54,11 @@ Allows you to follow the output of an "allocated console" on linux.
 Usage: `./listen.sh (name)`
 > If you don't supply a name in the `alloc_console` call you should also not supply a name here.
 
-# Documentation
+# 📑 Documentation
 The documentation can be found [here](https://github.com/Curve/lime/wiki/Documentation).  
 If you want code examples you can take a look at the [tests](tests/).
 
-# Installation
+# ⚙️ Installation
 - FetchContent
   ```cmake
   include(FetchContent)
@@ -82,7 +82,7 @@ If you want code examples you can take a look at the [tests](tests/).
   add_subdirectory("<path_to_lime>")
   ```
 
-# Requirements
+# ✅ Requirements
 
 | Operating System | Requirements |
 | ---------------- | ------------ |
