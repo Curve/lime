@@ -98,9 +98,10 @@ namespace lime
         return std::nullopt;
     }
 
-    std::uint32_t GetNumberOfSymbolsFromGnuHash(Elf64_Addr gnuHashAddress)
+    // https://stackoverflow.com/questions/15779185/how-to-list-on-the-fly-all-the-functions-symbols-available-in-c-code-on-a-linux
+    std::uint32_t symbols_from_gnu_hash(Elf64_Addr hash_address)
     {
-        using Header = struct
+        using header_t = struct
         {
             std::uint32_t nbuckets;
             std::uint32_t symoffset;
@@ -108,41 +109,41 @@ namespace lime
             std::uint32_t bloom_shift;
         };
 
-        const auto *header = reinterpret_cast<Header *>(gnuHashAddress);
-        const auto bucketsAddress = reinterpret_cast<std::uintptr_t>(gnuHashAddress + sizeof(Header) + (sizeof(std::uint64_t) * header->bloom_size));
+        const auto *header = reinterpret_cast<header_t *>(hash_address);
+        const auto buckets_address = reinterpret_cast<std::uintptr_t>(hash_address + sizeof(header_t) + (sizeof(std::uint64_t) * header->bloom_size));
 
-        std::uint32_t lastSymbol = 0;
-        const auto *bucketAddress = reinterpret_cast<std::uint32_t *>(bucketsAddress);
+        std::uint32_t last_symbol = 0;
+        const auto *bucket_address = reinterpret_cast<std::uint32_t *>(buckets_address);
 
         for (std::uint32_t i = 0; i < header->nbuckets; ++i)
         {
-            const std::uint32_t bucket = *bucketAddress;
-            if (lastSymbol < bucket)
+            const std::uint32_t bucket = *bucket_address;
+            if (last_symbol < bucket)
             {
-                lastSymbol = bucket;
+                last_symbol = bucket;
             }
-            bucketAddress++;
+            bucket_address++;
         }
 
-        if (lastSymbol < header->symoffset)
+        if (last_symbol < header->symoffset)
         {
             return header->symoffset;
         }
 
-        const auto chainBaseAddress = reinterpret_cast<std::uintptr_t>(bucketAddress) + (sizeof(std::uint32_t) * header->nbuckets);
+        const auto chain_base = reinterpret_cast<std::uintptr_t>(bucket_address) + (sizeof(std::uint32_t) * header->nbuckets);
 
         while (true)
         {
-            const auto *chainEntry = reinterpret_cast<std::uint32_t *>(chainBaseAddress + (lastSymbol - header->symoffset) * sizeof(std::uint32_t));
-            lastSymbol++;
+            const auto *chain_entry = reinterpret_cast<std::uint32_t *>(chain_base + (last_symbol - header->symoffset) * sizeof(std::uint32_t));
+            last_symbol++;
 
-            if (*chainEntry & 1)
+            if (*chain_entry & 1)
             {
                 break;
             }
         }
 
-        return lastSymbol;
+        return last_symbol;
     }
 
     void module::impl::iterate_symbols(const std::function<bool(const std::string &)> &callback) const
@@ -167,7 +168,7 @@ namespace lime
                     }
                     else if (dyn->d_tag == DT_GNU_HASH && symbol_count == 0)
                     {
-                        symbol_count = GetNumberOfSymbolsFromGnuHash(dyn->d_un.d_ptr);
+                        symbol_count = symbols_from_gnu_hash(dyn->d_un.d_ptr);
                     }
                     else if (dyn->d_tag == DT_STRTAB)
                     {
