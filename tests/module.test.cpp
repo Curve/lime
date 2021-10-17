@@ -23,5 +23,5 @@ TEST_CASE("Modules are tested", "[modules]")
     CHECK(exported_fun == reinterpret_cast<std::uintptr_t>(exported_func));
 
     REQUIRE(!this_module->get_symbols().empty());
-    CHECK(this_module->find_symbol("printf"));
+    CHECK(this_module->find_symbol("exported_func"));
 }
