@@ -1,5 +1,8 @@
 #include <Windows.h>
+#include <functional>
 #include <module.hpp>
+
+#include <ImageHlp.h>
 #include <psapi.h>
 
 namespace lime
@@ -7,6 +10,7 @@ namespace lime
     struct module::impl
     {
         HMODULE handle;
+        void iterate_symbols(const std::function<bool(const std::string &)> &) const;
     };
 
     module::~module() = default;
@@ -103,6 +107,72 @@ namespace lime
             {
                 return std::move(module);
             }
+        }
+
+        return std::nullopt;
+    }
+
+    void module::impl::iterate_symbols(const std::function<bool(const std::string &)> &callback) const
+    {
+        TCHAR path[MAX_PATH];
+        GetModuleFileNameA(handle, path, sizeof(path));
+
+        _LOADED_IMAGE image;
+        if (MapAndLoad(path, nullptr, &image, TRUE, TRUE))
+        {
+            ULONG size{};
+            const auto *export_directory =
+                reinterpret_cast<_IMAGE_EXPORT_DIRECTORY *>(ImageDirectoryEntryToData(image.MappedAddress, false, IMAGE_DIRECTORY_ENTRY_EXPORT, &size));
+
+            if (export_directory)
+            {
+                const auto *rvas =
+                    reinterpret_cast<DWORD *>(ImageRvaToVa(image.FileHeader, image.MappedAddress, export_directory->AddressOfNames, nullptr));
+
+                for (size_t i = 0; i < export_directory->NumberOfNames; i++)
+                {
+                    const auto *name = reinterpret_cast<char *>(ImageRvaToVa(image.FileHeader, image.MappedAddress, rvas[i], nullptr));
+                    if (callback(name))
+                        return;
+                }
+            }
+
+            UnMapAndLoad(&image);
+        }
+    }
+
+    std::vector<std::pair<std::string, std::uintptr_t>> module::get_symbols() const
+    {
+        if (m_impl)
+        {
+            std::vector<std::pair<std::string, std::uintptr_t>> rtn;
+            m_impl->iterate_symbols([&](const std::string &name) {
+                rtn.emplace_back(std::make_pair(name, get_symbol(name)));
+                return false;
+            });
+
+            return rtn;
+        }
+
+        return {};
+    }
+
+    std::optional<std::uintptr_t> module::find_symbol(const std::string &name) const
+    {
+        if (m_impl)
+        {
+            std::uintptr_t rtn{};
+            m_impl->iterate_symbols([&](const std::string &module_name) {
+                if (name == module_name)
+                {
+                    rtn = get_symbol(name);
+                    return true;
+                }
+
+                return false;
+            });
+
+            return rtn;
         }
 
         return std::nullopt;
