@@ -38,6 +38,8 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
   - Get module by name
   - Get module size / name
   - Retrieve specific symbol 
+  - Find symbol
+  - List all exported symbols
 - Cross-platform entry-point 
 
 > ¹ On linux no console will be opened because it is not portable, instead a bash script (`tools/listen.sh`) is used to follow the output
