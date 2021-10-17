@@ -32,5 +32,6 @@ namespace lime
       public:
         static std::vector<module> get_modules();
         static std::optional<module> get(const std::string &name);
+        static std::optional<module> find(const std::string &name);
     };
 } // namespace lime

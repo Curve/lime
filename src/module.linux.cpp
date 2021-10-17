@@ -80,4 +80,17 @@ namespace lime
 
         return std::nullopt;
     }
+
+    std::optional<module> module::find(const std::string &name)
+    {
+        for (auto &module : get_modules())
+        {
+            if (module.get_name().find(name) != std::string::npos)
+            {
+                return std::move(module);
+            }
+        }
+
+        return std::nullopt;
+    }
 } // namespace lime
