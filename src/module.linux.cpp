@@ -108,15 +108,15 @@ namespace lime
             std::uint32_t bloom_shift;
         };
 
-        auto *header = reinterpret_cast<Header *>(gnuHashAddress);
-        auto bucketsAddress = reinterpret_cast<std::uintptr_t>(gnuHashAddress + sizeof(Header) + (sizeof(std::uint64_t) * header->bloom_size));
+        const auto *header = reinterpret_cast<Header *>(gnuHashAddress);
+        const auto bucketsAddress = reinterpret_cast<std::uintptr_t>(gnuHashAddress + sizeof(Header) + (sizeof(std::uint64_t) * header->bloom_size));
 
         std::uint32_t lastSymbol = 0;
-        auto *bucketAddress = reinterpret_cast<std::uint32_t *>(bucketsAddress);
+        const auto *bucketAddress = reinterpret_cast<std::uint32_t *>(bucketsAddress);
 
         for (std::uint32_t i = 0; i < header->nbuckets; ++i)
         {
-            std::uint32_t bucket = *bucketAddress;
+            const std::uint32_t bucket = *bucketAddress;
             if (lastSymbol < bucket)
             {
                 lastSymbol = bucket;
@@ -129,11 +129,11 @@ namespace lime
             return header->symoffset;
         }
 
-        auto chainBaseAddress = reinterpret_cast<std::uintptr_t>(bucketAddress) + (sizeof(std::uint32_t) * header->nbuckets);
+        const auto chainBaseAddress = reinterpret_cast<std::uintptr_t>(bucketAddress) + (sizeof(std::uint32_t) * header->nbuckets);
 
         while (true)
         {
-            auto *chainEntry = reinterpret_cast<std::uint32_t *>(chainBaseAddress + (lastSymbol - header->symoffset) * sizeof(std::uint32_t));
+            const auto *chainEntry = reinterpret_cast<std::uint32_t *>(chainBaseAddress + (lastSymbol - header->symoffset) * sizeof(std::uint32_t));
             lastSymbol++;
 
             if (*chainEntry & 1)
@@ -151,7 +151,7 @@ namespace lime
         {
             if (info.dlpi_phdr[i].p_type == PT_DYNAMIC)
             {
-                auto *dyn = reinterpret_cast<ElfW(Dyn) *>(info.dlpi_addr + info.dlpi_phdr[i].p_vaddr);
+                const auto *dyn = reinterpret_cast<ElfW(Dyn) *>(info.dlpi_addr + info.dlpi_phdr[i].p_vaddr);
 
                 char *string_table{};
                 ElfW(Sym *) sym_entry{};
