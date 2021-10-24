@@ -14,6 +14,13 @@ void call_another_function()
     another_function();
 }
 
+__attribute__((naked)) void naked_function()
+{
+    __asm volatile("push %rax\n"
+                   "mov $1000, %rax\n"
+                   "pop %rax");
+}
+
 const int some_test_int = 10;
 
 TEST_CASE("Address utility is tested", "[address]")
@@ -37,4 +44,12 @@ TEST_CASE("Address utility is tested", "[address]")
     auto safe_value = test_address.get_as_safe<int>();
     REQUIRE(safe_value);
     CHECK(*safe_value == 10);
+
+    auto naked = lime::address(reinterpret_cast<std::uintptr_t>(naked_function));
+    REQUIRE(naked.get_mnemonic() == lime::mnemonic::PUSH);
+    CHECK(naked.next()->get_mnemonic() == lime::mnemonic::MOV);
+
+    auto immediates = naked.next()->get_immediates();
+    REQUIRE(!immediates.empty());
+    REQUIRE(immediates.front() == 1000);
 }
