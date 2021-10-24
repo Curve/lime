@@ -40,6 +40,15 @@ namespace lime
         return std::nullopt;
     }
 
+    std::optional<address> address::next() const
+    {
+        if (get_safe())
+        {
+            return {m_address + disasm::get_size(m_address).value_or(0)};
+        }
+
+        return std::nullopt;
+    }
     std::optional<address> address::follow() const
     {
         if (get_safe())
@@ -61,6 +70,15 @@ namespace lime
 
         return std::nullopt;
     }
+    std::vector<std::uintptr_t> address::get_immediates() const
+    {
+        if (get_safe())
+        {
+            return disasm::get_immediates(m_address);
+        }
+
+        return {};
+    }
     std::optional<address> address::read_until(const std::uint32_t &mnemonic) const
     {
         const auto page = page::get_page_at(m_address);
@@ -81,5 +99,14 @@ namespace lime
         }
 
         return std::nullopt;
+    }
+
+    address address::operator+(const std::size_t &offset) const
+    {
+        return {m_address + offset};
+    }
+    address address::operator-(const std::size_t &offset) const
+    {
+        return {m_address - offset};
     }
 } // namespace lime

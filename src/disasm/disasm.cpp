@@ -45,6 +45,50 @@ namespace lime
         return std::nullopt;
     }
 
+    std::vector<std::uintptr_t> disasm::get_immediates(const std::uintptr_t &address)
+    {
+        ZydisDecoder decoder;
+
+        if constexpr (arch == architecture::x64)
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+        else
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LEGACY_32, ZYDIS_STACK_WIDTH_32);
+
+        std::vector<std::uintptr_t> rtn;
+        ZydisDecodedInstruction instruction;
+        if (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address), 16, &instruction)))
+        {
+            for (int i = 0; instruction.operand_count > i; i++)
+            {
+                const auto &operand = instruction.operands[i];
+                if (operand.type == ZYDIS_OPERAND_TYPE_IMMEDIATE)
+                {
+                    rtn.emplace_back(operand.imm.value.u);
+                }
+            }
+        }
+
+        return rtn;
+    }
+
+    std::optional<std::size_t> disasm::get_size(const std::uintptr_t &address)
+    {
+        ZydisDecoder decoder;
+
+        if constexpr (arch == architecture::x64)
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+        else
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LEGACY_32, ZYDIS_STACK_WIDTH_32);
+
+        ZydisDecodedInstruction instruction;
+        if (ZYAN_SUCCESS(ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address), 16, &instruction)))
+        {
+            return instruction.length;
+        }
+
+        return std::nullopt;
+    }
+
     std::optional<std::uintptr_t> disasm::read_until(const std::uint32_t &mnemonic, const std::uintptr_t &address, const std::size_t &size)
     {
         ZydisDecoder decoder;
@@ -60,7 +104,7 @@ namespace lime
         while (ZYAN_SUCCESS(
             ZydisDecoderDecodeBuffer(&decoder, reinterpret_cast<void *>(address + offset), std::min<std::size_t>(16, size - offset), &instruction)))
         {
-            if (instruction.mnemonic == mnemonic)
+            if (offset && instruction.mnemonic == mnemonic)
             {
                 return address + offset;
             }
