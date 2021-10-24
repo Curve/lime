@@ -3,12 +3,6 @@
 #include <constants/protection.hpp>
 #include <page.hpp>
 
-#ifdef __GNUC__
-#define NOINLINE __attribute__((noinline))
-#else
-#define NOOPT __declspec(noinline)
-#endif
-
 int some_func()
 {
     return 1;
