@@ -16,6 +16,7 @@ void call_another_function()
 
 const int some_test_int = 10;
 const std::uint8_t code[] = {0x50, 0x48, 0xC7, 0xC0, 0xE8, 0x03, 0x00, 0x00, 0x58};
+const std::uint8_t code2[] = {0x48, 0x8B, 0x3D, 0x6A, 0x50, 0xAE, 0x00};
 
 TEST_CASE("Address utility is tested", "[address]")
 {
@@ -39,11 +40,15 @@ TEST_CASE("Address utility is tested", "[address]")
     REQUIRE(safe_value);
     CHECK(*safe_value == 10);
 
-    auto naked = lime::address(reinterpret_cast<std::uintptr_t>(code));
-    REQUIRE(naked.get_mnemonic().value_or(0) == lime::mnemonic::PUSH);
-    CHECK(naked.next()->get_mnemonic() == lime::mnemonic::MOV);
+    auto test_code = lime::address(reinterpret_cast<std::uintptr_t>(code));
+    REQUIRE(test_code.get_mnemonic().value_or(0) == lime::mnemonic::PUSH);
+    CHECK(test_code.next()->get_mnemonic() == lime::mnemonic::MOV);
 
-    auto immediates = naked.next()->get_immediates();
+    auto immediates = test_code.next()->get_immediates();
     REQUIRE(!immediates.empty());
     REQUIRE(immediates.front() == 1000);
+
+    auto test_code2 = lime::address(reinterpret_cast<std::uintptr_t>(code2));
+    auto immediates2 = test_code2.get_immediates();
+    REQUIRE(!immediates2.empty());
 }
