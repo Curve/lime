@@ -65,6 +65,13 @@ namespace lime
                 {
                     rtn.emplace_back(operand.imm.value.u);
                 }
+                else if (operand.type == ZYDIS_OPERAND_TYPE_MEMORY)
+                {
+                    ZyanU64 result{};
+                    ZydisCalcAbsoluteAddress(&instruction, &operand, address, &result);
+
+                    rtn.emplace_back(result);
+                }
             }
         }
 
