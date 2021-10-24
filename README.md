@@ -23,6 +23,8 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
   - Read until specific mnemonic
   - Follow calls/jumps
   - Read as type
+  - Get Immediates
+  - Get next instruction
 - Keyboard utility²
   - Press / Release key
   - Check if key is pressed
