@@ -12,6 +12,7 @@ namespace lime
             LEA = 392,
             CALL = 67,
             PUSH = 657,
+            CMP = 103,
         };
     } // namespace mnemonic
 } // namespace lime
