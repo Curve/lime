@@ -1,10 +1,13 @@
 #pragma once
 
 #if defined(__linux__)
-__attribute__((constructor)) inline void on_entry()
+namespace internal
 {
-    entry();
-}
+    static auto _init = []() {
+        entry();
+        return true;
+    }();
+} // namespace internal
 
 __attribute__((destructor)) inline void on_exit()
 {
