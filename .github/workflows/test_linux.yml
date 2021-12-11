@@ -26,14 +26,6 @@ jobs:
       - name: Install build dependencies
         run: "sudo apt-get update && sudo apt-get install git build-essential cmake libx11-dev libxtst-dev"
 
-      - name: Install Catch2
-        run: |
-          git clone https://github.com/catchorg/Catch2.git 
-          cd Catch2
-          git checkout v2.13.7
-          cmake -Bbuild -H. -DBUILD_TESTING=OFF -DCATCH_BUILD_EXAMPLES=OFF -DCATCH_BUILD_STATIC_LIBRARY=ON
-          sudo cmake --build build/ --target install
-
       - name: Compile
         run: "mkdir build && cd build && cmake .. -DLIME_BUILD_TESTS=ON -DLIME_IS_CI=ON && cmake --build . --config Debug"
 

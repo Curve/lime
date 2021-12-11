@@ -4,7 +4,7 @@ project(lime LANGUAGES CXX VERSION 1.0)
 # --------------------------------------------------------------------------------------------------------
 # Library options
 # --------------------------------------------------------------------------------------------------------
-option(LIME_BUILD_TESTS "Run tests" OFF)
+option(LIME_BUILD_TESTS "Run tests" ON)
 option(LIME_IS_CI "Determines if lime is built from the GitHub CI" OFF)
 
 # --------------------------------------------------------------------------------------------------------
@@ -36,7 +36,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC "include")
 # --------------------------------------------------------------------------------------------------------
 if (LIME_BUILD_TESTS)
     message(STATUS "Building tests")
-    find_package(Catch2 CONFIG REQUIRED)
+
+    if (NOT TARGET Catch2::Catch2WithMain)
+        include(FetchContent)
+        FetchContent_Declare(Catch2 GIT_REPOSITORY "https://github.com/catchorg/Catch2" GIT_TAG v2.13.7)
+        option(CATCH_BUILD_STATIC_LIBRARY "" ON)
+        FetchContent_MakeAvailable(Catch2)
+    endif()
 
     if (LIME_IS_CI)
         add_definitions(-DIS_CI=1)
@@ -54,10 +60,6 @@ if (LIME_BUILD_TESTS)
 
     add_executable(tests ${test_src})
     target_link_libraries(tests PRIVATE Catch2::Catch2 Catch2::Catch2WithMain ${PROJECT_NAME})
-    
-    include(CTest)
-    include(Catch)
-    catch_discover_tests(tests)
 
     target_compile_features(tests PRIVATE cxx_std_17)
     set_target_properties(tests PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
