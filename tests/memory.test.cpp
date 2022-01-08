@@ -3,6 +3,8 @@
 #include <page.hpp>
 #include <utility/memory.hpp>
 
+#undef max // WinDef.h defines a max macro which collides with any function named max (i.e. numeric_limits)
+
 int val = 0;
 
 TEST_CASE("Memory utils are tested", "[memory]")

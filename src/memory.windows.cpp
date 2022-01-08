@@ -4,6 +4,8 @@
 #include <memoryapi.h>
 #include <utility/memory.hpp>
 
+#undef max // WinDef.h defines a max macro which collides with any function named max (i.e. numeric_limits)
+
 std::unique_ptr<char[]> lime::read(const std::uintptr_t &address, const std::size_t &size)
 {
     auto buffer = std::make_unique<char[]>(size);
