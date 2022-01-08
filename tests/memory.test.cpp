@@ -23,5 +23,5 @@ TEST_CASE("Memory utils are tested", "[memory]")
 
     auto allocated_near = lime::allocate_near(0, 100, lime::prot::read_only);
     REQUIRE(allocated_near);
-    CHECK(*allocated_near < INT32_MAX);
+    CHECK(*allocated_near < std::numeric_limits<std::int32_t>::max());
 }

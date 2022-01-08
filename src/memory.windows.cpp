@@ -1,5 +1,6 @@
 #include <Windows.h>
 #include <cstring>
+#include <limits>
 #include <memoryapi.h>
 #include <utility/memory.hpp>
 
@@ -54,10 +55,10 @@ std::shared_ptr<std::uintptr_t> lime::allocate_near(const std::uintptr_t &addres
     GetSystemInfo(&si);
     auto allocation_granularity = si.dwAllocationGranularity;
 
-    auto min = static_cast<std::intptr_t>(address - INT32_MAX);
+    auto min = static_cast<std::intptr_t>(address - std::numeric_limits<std::int32_t>::max());
     min += (allocation_granularity - (min % allocation_granularity));
 
-    auto max = static_cast<std::intptr_t>(address + INT32_MAX);
+    auto max = static_cast<std::intptr_t>(address + std::numeric_limits<std::int32_t>::max());
     max -= (max % allocation_granularity) + 1;
 
     requirements.Alignment = 0;
