@@ -15,7 +15,7 @@ namespace lime
 
     module::~module() = default;
     module::module(module &&) noexcept = default;
-    module::module() : m_impl(std::make_unique<impl>()), m_size(0), m_start(0) {}
+    module::module() :m_impl(std::make_unique<impl>()), m_size(0), m_start(0) {}
 
     std::string module::get_name() const
     {
@@ -133,7 +133,7 @@ namespace lime
                 {
                     const auto *name = reinterpret_cast<char *>(ImageRvaToVa(image.FileHeader, image.MappedAddress, rvas[i], nullptr));
                     if (callback(name))
-                        return;
+                        break;
                 }
             }
 
