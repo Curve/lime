@@ -6,15 +6,11 @@ project(lime LANGUAGES CXX VERSION 1.0)
 # --------------------------------------------------------------------------------------------------------
 
 option(LIME_BUILD_TESTS "Run tests" OFF)
-option(LIME_IS_CI "Determines if lime is built from the GitHub CI" OFF)
+option(LIME_IS_CI       "Determines if lime is built from the GitHub CI" OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # Create library
 # --------------------------------------------------------------------------------------------------------
-
-if (NOT MSVC)
-    set(LIME_COMPILE_OPTIONS -Wall -Werror -Wextra -pedantic)
-endif()
 
 if (UNIX)
     file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/signature.cpp" "src/address.cpp" "src/*.linux.cpp")
@@ -23,10 +19,16 @@ elseif (WIN32)
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 add_library(${PROJECT_NAME} STATIC ${src})
+add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
+
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
-target_compile_options(${PROJECT_NAME} PRIVATE ${LIME_COMPILE_OPTIONS})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
+
+if (NOT MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Werror -Wextra -pedantic)
+endif()
 
 # --------------------------------------------------------------------------------------------------------
 # Include "include" folder
@@ -48,12 +50,12 @@ if (LIME_BUILD_TESTS)
         FetchContent_MakeAvailable(Catch2)
     endif()
 
-    if (LIME_IS_CI)
-        add_definitions(-DIS_CI=1)
-        message(STATUS "Building from CI, disabling some tests")
-    endif()
-    
     file(GLOB test_src "tests/*.cpp")
+    
+    if (LIME_IS_CI)
+        list(FILTER test_src EXCLUDE REGEX ".*keyboard.*")
+        message(STATUS "Building from CI, disabling keyboard tests")
+    endif()
 
     if (MSVC)
         set_source_files_properties("tests/detour.test.cpp" PROPERTIES COMPILE_FLAGS /Od)
@@ -87,3 +89,10 @@ elseif(WIN32)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE Zydis)
+
+# --------------------------------------------------------------------------------------------------------
+# Install Targets
+# --------------------------------------------------------------------------------------------------------
+
+install(DIRECTORY "include/" TYPE INCLUDE)
+install(TARGETS ${PROJECT_NAME} LIBRARY DESTINATION lib INCLUDES DESTINATION include)

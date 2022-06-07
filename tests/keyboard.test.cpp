@@ -4,7 +4,6 @@
 
 TEST_CASE("Keyboard utility is tested", "[keyboard]")
 {
-#if !defined(IS_CI)
     lime::keyboard::release(lime::key::escape);
     REQUIRE(!lime::keyboard::is_down(lime::key::escape));
 
@@ -15,5 +14,4 @@ TEST_CASE("Keyboard utility is tested", "[keyboard]")
 
     lime::keyboard::release(lime::key::escape);
     REQUIRE(!lime::keyboard::is_down(lime::key::escape));
-#endif
 }
