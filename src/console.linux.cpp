@@ -1,8 +1,9 @@
-#include <fstream>
-#include <functional>
-#include <iostream>
+#include "utility/console.hpp"
+
 #include <memory>
-#include <utility/console.hpp>
+#include <fstream>
+#include <iostream>
+#include <functional>
 
 namespace lime
 {
@@ -47,11 +48,10 @@ namespace lime
             impl::original_stream = std::cout.rdbuf();
         }
 
-        impl::custom_stream =
-            deleted_unique_ptr<std::ofstream>(new std::ofstream(name.empty() ? "/tmp/lime" : "/tmp/lime_" + name), [name](std::ostream *data) {
-                delete data;
-                std::filesystem::remove(name.empty() ? "/tmp/lime" : "/tmp/lime_" + name);
-            });
+        impl::custom_stream = deleted_unique_ptr<std::ofstream>(new std::ofstream(name.empty() ? "/tmp/lime" : "/tmp/lime_" + name), [name](std::ostream *data) {
+            delete data;
+            std::filesystem::remove(name.empty() ? "/tmp/lime" : "/tmp/lime_" + name);
+        });
 
         std::cout.rdbuf(impl::custom_stream->rdbuf());
     }

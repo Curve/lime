@@ -1,8 +1,9 @@
+#include "utility/memory.hpp"
+
 #include <Windows.h>
-#include <cstring>
 #include <limits>
+#include <cstring>
 #include <memoryapi.h>
-#include <utility/memory.hpp>
 
 #undef max // WinDef.h defines a max macro which collides with any function named max (i.e. numeric_limits)
 

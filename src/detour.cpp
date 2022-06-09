@@ -1,14 +1,16 @@
+#include "hooks/detour.hpp"
 #include "disasm/disasm.hpp"
-#include <constants/architecture.hpp>
-#include <constants/mnemonics.hpp>
-#include <constants/protection.hpp>
+#include "utility/memory.hpp"
+#include "constants/mnemonics.hpp"
+#include "constants/protection.hpp"
+#include "constants/architecture.hpp"
+
 #include <cstring>
-#include <hooks/detour.hpp>
-#include <utility/memory.hpp>
 
 namespace lime
 {
     detour::detour() = default;
+
     detour::~detour()
     {
         if (protect(m_original_page->get_start(), m_original_page->get_end() - m_original_page->get_start(), prot::read_write_execute))
@@ -17,6 +19,7 @@ namespace lime
             protect(m_original_page->get_start(), m_original_page->get_end() - m_original_page->get_start(), m_original_page->get_protection());
         }
     }
+
     std::uintptr_t detour::get_original() const
     {
         return m_original_func;
@@ -27,6 +30,7 @@ namespace lime
         [[maybe_unused]] detour_status status{};
         return create(target, replacement, status);
     }
+
     std::unique_ptr<detour> detour::create(std::uintptr_t target, const std::uintptr_t &replacement, detour_status &status)
     {
         auto original_page = page::get_page_at(target);
@@ -55,7 +59,7 @@ namespace lime
                         return nullptr;
                     }
 
-                    original_page = *new_page;
+                    original_page.emplace(*new_page);
                 }
             }
         }
@@ -82,8 +86,7 @@ namespace lime
         {
             if (is_relocateable)
             {
-                required_size = disasm::get_required_prologue_length(target, arch == architecture::x64 ? (6 + sizeof(std::uintptr_t))
-                                                                                                       : (1 + sizeof(std::uintptr_t)));
+                required_size = disasm::get_required_prologue_length(target, arch == architecture::x64 ? (6 + sizeof(std::uintptr_t)) : (1 + sizeof(std::uintptr_t)));
 
                 raw_original = read(target, required_size);
                 original_code = {raw_original.get(), raw_original.get() + required_size};

@@ -1,9 +1,10 @@
+#include "utility/console.hpp"
+
 #include <Windows.h>
-#include <fstream>
-#include <functional>
-#include <iostream>
 #include <memory>
-#include <utility/console.hpp>
+#include <fstream>
+#include <iostream>
+#include <functional>
 
 namespace lime
 {

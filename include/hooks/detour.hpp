@@ -1,7 +1,8 @@
 #pragma once
-#include <cstdint>
+#include "page.hpp"
+
 #include <memory>
-#include <page.hpp>
+#include <cstdint>
 
 namespace lime
 {
@@ -37,12 +38,10 @@ namespace lime
         template <typename type_t> func_t<type_t> get_original() const;
 
       public:
-        template <typename target_t, typename replacement_t>
-        static std::unique_ptr<detour> create(const target_t &target, const replacement_t &replacement);
+        template <typename target_t, typename replacement_t> static std::unique_ptr<detour> create(const target_t &target, const replacement_t &replacement);
         static std::unique_ptr<detour> create(std::uintptr_t target, const std::uintptr_t &replacement);
 
-        template <typename target_t, typename replacement_t>
-        static std::unique_ptr<detour> create(const target_t &target, const replacement_t &replacement, detour_status &status);
+        template <typename target_t, typename replacement_t> static std::unique_ptr<detour> create(const target_t &target, const replacement_t &replacement, detour_status &status);
         static std::unique_ptr<detour> create(std::uintptr_t target, const std::uintptr_t &replacement, detour_status &status);
     };
 } // namespace lime

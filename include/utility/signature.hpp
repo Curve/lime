@@ -1,9 +1,10 @@
 #pragma once
+#include "utility/address.hpp"
+
+#include <string>
+#include <vector>
 #include <cstdint>
 #include <optional>
-#include <string>
-#include <utility/address.hpp>
-#include <vector>
 
 namespace lime
 {

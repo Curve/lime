@@ -1,21 +1,24 @@
+#include "constants/protection.hpp"
+#include "utility/address.hpp"
 #include "disasm/disasm.hpp"
-#include <constants/protection.hpp>
-#include <page.hpp>
-#include <utility/address.hpp>
+#include "page.hpp"
 
 namespace lime
 {
     address::address() : m_address(0) {}
+
     address::address(const std::uintptr_t &address) : m_address(address) {}
 
     bool address::operator>(const address &other) const
     {
         return m_address > other.m_address;
     }
+
     bool address::operator<(const address &other) const
     {
         return m_address < other.m_address;
     }
+
     bool address::operator==(const address &other) const
     {
         return m_address == other.m_address;
@@ -25,6 +28,7 @@ namespace lime
     {
         return m_address;
     }
+
     std::optional<std::uintptr_t> address::get_safe() const
     {
         const auto page = page::get_page_at(m_address);
@@ -49,6 +53,7 @@ namespace lime
 
         return std::nullopt;
     }
+
     std::optional<address> address::follow() const
     {
         if (get_safe())
@@ -61,6 +66,7 @@ namespace lime
 
         return std::nullopt;
     }
+
     std::optional<std::uint32_t> address::get_mnemonic() const
     {
         if (get_safe())
@@ -70,6 +76,7 @@ namespace lime
 
         return std::nullopt;
     }
+
     std::vector<std::uintptr_t> address::get_immediates() const
     {
         if (get_safe())
@@ -79,6 +86,7 @@ namespace lime
 
         return {};
     }
+
     std::optional<address> address::read_until(const std::uint32_t &mnemonic) const
     {
         const auto page = page::get_page_at(m_address);
@@ -105,6 +113,7 @@ namespace lime
     {
         return {m_address + offset};
     }
+
     address address::operator-(const std::size_t &offset) const
     {
         return {m_address - offset};

@@ -1,8 +1,9 @@
+#include "utility/keyboard.hpp"
+
+#include <memory>
+#include <functional>
 #include <X11/Xlib.h>
 #include <X11/extensions/XTest.h>
-#include <functional>
-#include <memory>
-#include <utility/keyboard.hpp>
 
 namespace lime
 {

@@ -1,4 +1,5 @@
 #pragma once
+#include "memory.hpp"
 
 template <typename type_t> bool lime::write(const std::uintptr_t &address, const type_t &value)
 {

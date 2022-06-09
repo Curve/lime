@@ -1,9 +1,10 @@
-#include <cinttypes>
-#include <constants/protection.hpp>
+#include "page.hpp"
+#include "constants/protection.hpp"
+
 #include <cstring>
-#include <filesystem>
 #include <fstream>
-#include <page.hpp>
+#include <cinttypes>
+#include <filesystem>
 #include <sys/unistd.h>
 
 namespace lime
@@ -16,6 +17,7 @@ namespace lime
     };
 
     page::page() : m_prot(0) {}
+
     page::page(const page &) = default;
 
     std::optional<page> page::impl::parse_page(const std::string &line)
@@ -91,10 +93,12 @@ namespace lime
     {
         return m_end;
     }
+
     std::uintptr_t page::get_start() const
     {
         return m_start;
     }
+
     std::uint8_t page::get_protection() const
     {
         return m_prot;

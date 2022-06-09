@@ -1,7 +1,8 @@
+#include "utility/memory.hpp"
+
 #include <cstring>
 #include <sys/mman.h>
 #include <sys/unistd.h>
-#include <utility/memory.hpp>
 
 std::unique_ptr<char[]> lime::read(const std::uintptr_t &address, const std::size_t &size)
 {
@@ -42,8 +43,7 @@ std::shared_ptr<std::uintptr_t> lime::allocate(const std::size_t &size, const st
 
 bool lime::allocate_at(const std::uintptr_t &address, const std::size_t &size, const std::uint8_t &prot)
 {
-    return mmap(reinterpret_cast<void *>(address), size, prot, MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE, -1, 0) !=
-           reinterpret_cast<void *>(-1);
+    return mmap(reinterpret_cast<void *>(address), size, prot, MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE, -1, 0) != reinterpret_cast<void *>(-1);
 }
 
 std::shared_ptr<std::uintptr_t> lime::allocate_near(const std::uintptr_t &address, const std::size_t &size, const std::uint8_t &prot)

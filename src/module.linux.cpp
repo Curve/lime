@@ -1,7 +1,9 @@
-#include <algorithm>
-#include <dlfcn.h>
+#include "module.hpp"
+
 #include <link.h>
-#include <module.hpp>
+#include <dlfcn.h>
+#include <algorithm>
+#include <functional>
 
 namespace lime
 {
@@ -14,7 +16,7 @@ namespace lime
 
     module::~module() = default;
     module::module(module &&) noexcept = default;
-    module::module() : m_impl(std::make_unique<impl>()), m_size(0), m_start(0) {}
+    module::module() :m_impl(std::make_unique<impl>()), m_size(0), m_start(0) {}
 
     std::string module::get_name() const
     {

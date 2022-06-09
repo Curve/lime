@@ -1,9 +1,9 @@
-#include <Windows.h>
-#include <functional>
-#include <module.hpp>
+#include "module.hpp"
 
-#include <ImageHlp.h>
+#include <Windows.h>
 #include <psapi.h>
+#include <functional>
+#include <ImageHlp.h>
 
 namespace lime
 {
@@ -121,13 +121,11 @@ namespace lime
         if (MapAndLoad(path, nullptr, &image, TRUE, TRUE))
         {
             ULONG size{};
-            const auto *export_directory =
-                reinterpret_cast<_IMAGE_EXPORT_DIRECTORY *>(ImageDirectoryEntryToData(image.MappedAddress, false, IMAGE_DIRECTORY_ENTRY_EXPORT, &size));
+            const auto *export_directory = reinterpret_cast<_IMAGE_EXPORT_DIRECTORY *>(ImageDirectoryEntryToData(image.MappedAddress, false, IMAGE_DIRECTORY_ENTRY_EXPORT, &size));
 
             if (export_directory)
             {
-                const auto *rvas =
-                    reinterpret_cast<DWORD *>(ImageRvaToVa(image.FileHeader, image.MappedAddress, export_directory->AddressOfNames, nullptr));
+                const auto *rvas = reinterpret_cast<DWORD *>(ImageRvaToVa(image.FileHeader, image.MappedAddress, export_directory->AddressOfNames, nullptr));
 
                 for (size_t i = 0; i < export_directory->NumberOfNames; i++)
                 {

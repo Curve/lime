@@ -1,4 +1,5 @@
 #pragma once
+#include "entrypoint.hpp"
 
 #if defined(__linux__)
 namespace internal
@@ -7,12 +8,13 @@ namespace internal
         entry();
         return true;
     }();
+
+    __attribute__((destructor)) inline void _quit()
+    {
+        quit();
+    }
 } // namespace internal
 
-__attribute__((destructor)) inline void on_exit()
-{
-    exit();
-}
 #elif defined(_WIN32)
 #include <Windows.h>
 
@@ -25,7 +27,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
         break;
 
     case DLL_PROCESS_DETACH:
-        exit(hinstDLL, fdwReason, lpReserved);
+        quit(hinstDLL, fdwReason, lpReserved);
         break;
     }
 
