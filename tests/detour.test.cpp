@@ -1,5 +1,5 @@
+#include <lime/hooks/detour.hpp>
 #include <catch2/catch.hpp>
-#include <hooks/detour.hpp>
 
 std::unique_ptr<lime::detour> int_rtn_detour;
 int int_rtn_original(int param)

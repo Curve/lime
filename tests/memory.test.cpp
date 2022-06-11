@@ -1,7 +1,7 @@
+#include <lime/constants/protection.hpp>
+#include <lime/utility/memory.hpp>
 #include <catch2/catch.hpp>
-#include <constants/protection.hpp>
-#include <page.hpp>
-#include <utility/memory.hpp>
+#include <lime/page.hpp>
 
 #undef max // WinDef.h defines a max macro which collides with any function named max (i.e. numeric_limits)
 

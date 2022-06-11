@@ -1,7 +1,7 @@
+#include <lime/utility/console.hpp>
 #include <catch2/catch.hpp>
-#include <fstream>
 #include <iostream>
-#include <utility/console.hpp>
+#include <fstream>
 
 #if defined(_WIN32)
 #include <Windows.h>

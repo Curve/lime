@@ -21,8 +21,7 @@ TEST_CASE("Disassembly code is tested", "[disasm]")
 
     CHECK(lime::disasm::is_far_relocateable(far_code));
     CHECK(lime::disasm::get_estimated_size(far_code, false) >= lime::disasm::build_code(far_code, 0, 0, 100)->size());
-    CHECK(lime::disasm::get_estimated_size(far_code, true) >=
-          lime::disasm::build_code(far_code, 0, 0, std::numeric_limits<std::int64_t>::max())->size());
+    CHECK(lime::disasm::get_estimated_size(far_code, true) >= lime::disasm::build_code(far_code, 0, 0, std::numeric_limits<std::int64_t>::max())->size());
 
     CHECK(lime::disasm::get_required_prologue_length(reinterpret_cast<std::uintptr_t>(far_code.data()), 6) == 7);
 }

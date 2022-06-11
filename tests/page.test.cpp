@@ -1,7 +1,7 @@
 #define CONFIG_CATCH_MAIN
+#include <lime/constants/protection.hpp>
 #include <catch2/catch.hpp>
-#include <constants/protection.hpp>
-#include <page.hpp>
+#include <lime/page.hpp>
 
 int some_func()
 {

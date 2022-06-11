@@ -35,6 +35,7 @@ endif()
 # --------------------------------------------------------------------------------------------------------
 
 target_include_directories(${PROJECT_NAME} PUBLIC "include")
+target_include_directories(${PROJECT_NAME} PRIVATE "include/lime")
 
 # --------------------------------------------------------------------------------------------------------
 # Setup Catch2

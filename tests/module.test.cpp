@@ -1,5 +1,5 @@
 #include <catch2/catch.hpp>
-#include <module.hpp>
+#include <lime/module.hpp>
 
 #if defined(__linux__)
 #define EXPORT __attribute__((visibility("default")))

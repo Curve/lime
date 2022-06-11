@@ -1,7 +1,7 @@
+#include <lime/utility/signature.hpp>
 #include <catch2/catch.hpp>
-#include <module.hpp>
-#include <page.hpp>
-#include <utility/signature.hpp>
+#include <lime/module.hpp>
+#include <lime/page.hpp>
 
 static const std::uint8_t find_me[] = {0x90, 0xC7, 0x10, 0x39, 0x05, 0x00, 0x00, 0x00, 0x48, 0x2D, 0x95, 0x03, 0x00, 0x00};
 

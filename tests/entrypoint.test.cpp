@@ -1,5 +1,5 @@
+#include <lime/utility/entrypoint.hpp>
 #include <catch2/catch.hpp>
-#include <utility/entrypoint.hpp>
 
 inline bool success = false;
 

@@ -1,6 +1,6 @@
+#include <lime/constants/key_codes.hpp>
+#include <lime/utility/keyboard.hpp>
 #include <catch2/catch.hpp>
-#include <constants/key_codes.hpp>
-#include <utility/keyboard.hpp>
 
 TEST_CASE("Keyboard utility is tested", "[keyboard]")
 {

@@ -1,5 +1,5 @@
+#include <lime/constants/os.hpp>
 #include <catch2/catch.hpp>
-#include <constants/os.hpp>
 
 TEST_CASE("OS constants are tested", "[os]")
 {

@@ -1,8 +1,8 @@
+#include <lime/constants/mnemonics.hpp>
+#include <lime/utility/signature.hpp>
 #include <catch2/catch.hpp>
-#include <constants/mnemonics.hpp>
-#include <module.hpp>
-#include <page.hpp>
-#include <utility/signature.hpp>
+#include <lime/module.hpp>
+#include <lime/page.hpp>
 
 void another_function()
 {
