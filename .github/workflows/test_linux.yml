@@ -31,3 +31,26 @@ jobs:
 
       - name: Run Tests
         run: "./build/tests"
+
+  test-arch:
+    runs-on: ubuntu-20.04
+    container: archlinux
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["cpp"]
+
+    steps:
+      - name: Install build dependencies
+        run: "pacman --noconfirm -Syu base-devel cmake gcc git make libx11 libxtst"
+
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+      - name: Compile
+        run: "mkdir build && cd build && cmake .. -DLIME_BUILD_TESTS=ON -DLIME_IS_CI=ON && cmake --build . --config Debug"
+
+      - name: Run Tests
+        run: "./build/tests"
