@@ -17,7 +17,7 @@ namespace lime
 
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
-        if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address), 16, &instruction, operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address), 16, &instruction, operands)))
         {
             ZyanU64 result = 0;
             ZydisCalcAbsoluteAddress(&instruction, operands, address, &result);
@@ -39,7 +39,7 @@ namespace lime
 
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
-        if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address), 16, &instruction, operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address), 16, &instruction, operands)))
         {
             return instruction.mnemonic;
         }
@@ -59,7 +59,7 @@ namespace lime
         std::vector<std::uintptr_t> rtn;
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
-        if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address), 16, &instruction, operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address), 16, &instruction, operands)))
         {
             for (int i = 0; instruction.operand_count > i; i++)
             {
@@ -92,7 +92,7 @@ namespace lime
 
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
-        if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address), 16, &instruction, operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        if (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address), 16, &instruction, operands)))
         {
             return instruction.length;
         }
@@ -113,8 +113,7 @@ namespace lime
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
 
-        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address + offset), std::min<std::size_t>(16, size - offset),
-                                                   &instruction, operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(address + offset), std::min<std::size_t>(16, size - offset), &instruction, operands)))
         {
             if (offset && instruction.mnemonic == mnemonic)
             {
@@ -140,7 +139,7 @@ namespace lime
         ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
 
         // clang-format off
-        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, code.data() + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction, operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, code.data() + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction, operands)))
         {
             if (instruction.attributes & ZYDIS_ATTRIB_IS_RELATIVE)
             {
@@ -170,8 +169,7 @@ namespace lime
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
 
-        while (ZYAN_SUCCESS(
-            ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(where + offset), 16, &instruction, operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, reinterpret_cast<void *>(where + offset), 16, &instruction, operands)))
         {
             offset += instruction.length;
             if (offset >= desired_size)
@@ -228,8 +226,7 @@ namespace lime
         auto raw_code = std::make_unique<char[]>(code.size());
         memcpy(raw_code.get(), code.data(), code.size());
 
-        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, raw_code.get() + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction,
-                                                   operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, raw_code.get() + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction, operands)))
         {
             if (instruction.attributes & ZYDIS_ATTRIB_IS_RELATIVE)
             {
@@ -277,8 +274,7 @@ namespace lime
         constexpr auto jmp_size = arch == architecture::x64 ? 6 + sizeof(std::uintptr_t) : 1 + sizeof(std::uintptr_t);
         const auto diff = static_cast<std::int64_t>(old_pos) - static_cast<std::int64_t>(new_pos) - static_cast<std::int64_t>(jmp_size);
 
-        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, raw_code.get() + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction,
-                                                   operands, ZYDIS_MAX_OPERAND_COUNT, 0)))
+        while (ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, raw_code.get() + offset, std::min<std::size_t>(code.size() - offset, 16), &instruction, operands)))
         {
             auto pos = reinterpret_cast<std::uintptr_t>(raw_code.get() + offset);
 
