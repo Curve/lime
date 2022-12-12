@@ -43,7 +43,7 @@ namespace lime
 
         if (original_page->get_protection() != prot::none && original_page->get_protection() != prot::execute)
         {
-            if (disasm::get_mnemonic(target) == mnemonic::JMP)
+            if (disasm::get_mnemonic(target) == mnemonic::jmp)
             {
                 auto follow = disasm::follow(target);
 

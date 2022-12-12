@@ -2,17 +2,15 @@
 
 namespace lime
 {
-    namespace mnemonic
+    struct mnemonic
     {
-        enum
-        {
-            RET = 682,
-            JMP = 307,
-            MOV = 432,
-            LEA = 392,
-            CALL = 67,
-            PUSH = 657,
-            CMP = 103,
-        };
-    } // namespace mnemonic
+        static const int ret;
+        static const int jmp;
+        static const int lea;
+        static const int cmp;
+        static const int mov;
+
+        static const int call;
+        static const int push;
+    };
 } // namespace lime

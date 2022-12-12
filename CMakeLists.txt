@@ -13,9 +13,9 @@ option(LIME_IS_CI       "Determines if lime is built from the GitHub CI" OFF)
 # --------------------------------------------------------------------------------------------------------
 
 if (UNIX)
-    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/signature.cpp" "src/address.cpp" "src/*.linux.cpp")
+    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/signature.cpp" "src/address.cpp" "src/mnemonics.cpp" "src/*.linux.cpp")
 elseif (WIN32)
-    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/signature.cpp" "src/address.cpp" "src/*.windows.cpp")
+    file(GLOB src "src/disasm/disasm.cpp" "src/detour.cpp" "src/signature.cpp" "src/address.cpp" "src/mnemonics.cpp" "src/*.windows.cpp")
 endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)

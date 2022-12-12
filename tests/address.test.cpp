@@ -22,10 +22,10 @@ TEST_CASE("Address utility is tested", "[address]")
 {
     auto address = lime::address(reinterpret_cast<std::uintptr_t>(call_another_function));
 
-    if (address.get_mnemonic() == lime::mnemonic::JMP)
+    if (address.get_mnemonic() == lime::mnemonic::jmp)
         address = *address.follow();
 
-    auto function_call = address.read_until(lime::mnemonic::CALL);
+    auto function_call = address.read_until(lime::mnemonic::call);
     REQUIRE(function_call);
 
     auto function_address = function_call->follow();
@@ -41,8 +41,8 @@ TEST_CASE("Address utility is tested", "[address]")
     CHECK(*safe_value == 10);
 
     auto test_code = lime::address(reinterpret_cast<std::uintptr_t>(code));
-    REQUIRE(test_code.get_mnemonic().value_or(0) == lime::mnemonic::PUSH);
-    CHECK(test_code.next()->get_mnemonic() == lime::mnemonic::MOV);
+    REQUIRE(test_code.get_mnemonic().value_or(0) == lime::mnemonic::push);
+    CHECK(test_code.next()->get_mnemonic() == lime::mnemonic::mov);
 
     auto immediates = test_code.next()->get_immediates();
     REQUIRE(!immediates.empty());
