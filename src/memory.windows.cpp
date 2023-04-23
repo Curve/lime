@@ -1,6 +1,6 @@
 #include "utility/memory.hpp"
 
-#include <Windows.h>
+#include <windows.h>
 #include <limits>
 #include <cstring>
 #include <memoryapi.h>

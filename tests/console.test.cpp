@@ -4,7 +4,7 @@
 #include <fstream>
 
 #if defined(_WIN32)
-#include <Windows.h>
+#include <windows.h>
 #endif
 
 TEST_CASE("Console utility is tested", "[console]")

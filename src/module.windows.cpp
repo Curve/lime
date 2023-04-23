@@ -1,9 +1,9 @@
 #include "module.hpp"
 
-#include <Windows.h>
+#include <windows.h>
 #include <psapi.h>
 #include <functional>
-#include <ImageHlp.h>
+#include <imagehlp.h>
 
 namespace lime
 {

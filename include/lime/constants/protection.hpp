@@ -2,7 +2,7 @@
 #if defined(__linux__)
 #include <sys/mman.h>
 #elif defined(_WIN32)
-#include <Windows.h>
+#include <windows.h>
 #endif
 
 namespace lime

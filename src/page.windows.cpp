@@ -1,6 +1,6 @@
 #include "page.hpp"
 
-#include <Windows.h>
+#include <windows.h>
 
 namespace lime
 {

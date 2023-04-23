@@ -4,7 +4,7 @@
 #define XK_MISCELLANY 1
 #include <X11/keysymdef.h>
 #elif defined(_WIN32)
-#include <Windows.h>
+#include <windows.h>
 #endif
 
 namespace lime

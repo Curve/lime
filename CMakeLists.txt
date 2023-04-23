@@ -5,7 +5,7 @@ project(lime LANGUAGES CXX VERSION 1.0)
 # Library options
 # --------------------------------------------------------------------------------------------------------
 
-option(LIME_BUILD_TESTS "Run tests" ON)
+option(LIME_BUILD_TESTS "Run tests"                                      OFF)
 option(LIME_IS_CI       "Determines if lime is built from the GitHub CI" OFF)
 
 # --------------------------------------------------------------------------------------------------------

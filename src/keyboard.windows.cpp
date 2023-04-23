@@ -1,6 +1,6 @@
 #include "utility/keyboard.hpp"
 
-#include <Windows.h>
+#include <windows.h>
 
 namespace lime
 {

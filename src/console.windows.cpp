@@ -1,6 +1,6 @@
 #include "utility/console.hpp"
 
-#include <Windows.h>
+#include <windows.h>
 #include <memory>
 #include <fstream>
 #include <iostream>

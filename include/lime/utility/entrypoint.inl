@@ -16,7 +16,7 @@ namespace internal
 } // namespace internal
 
 #elif defined(_WIN32)
-#include <Windows.h>
+#include <windows.h>
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved)
 {
