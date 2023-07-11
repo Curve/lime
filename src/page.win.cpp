@@ -59,7 +59,9 @@ namespace lime
 
     bool page::restore()
     {
-        if (VirtualProtect(reinterpret_cast<LPVOID>(start()), size(), m_impl->original_prot, nullptr) == 0)
+        [[maybe_unused]] DWORD old{};
+
+        if (VirtualProtect(reinterpret_cast<LPVOID>(start()), size(), m_impl->original_prot, &old) == 0)
         {
             return false;
         }
@@ -82,7 +84,9 @@ namespace lime
 
     bool page::protect(protection prot)
     {
-        if (VirtualProtect(reinterpret_cast<LPVOID>(start()), size(), impl::translate(prot), nullptr) == 0)
+        [[maybe_unused]] DWORD old{};
+
+        if (VirtualProtect(reinterpret_cast<LPVOID>(start()), size(), impl::translate(prot), &old) == 0)
         {
             return false;
         }
@@ -134,15 +138,15 @@ namespace lime
         rtn.m_impl->end = base + info.RegionSize;
         rtn.m_impl->original_prot = info.Protect;
 
-        if (rtn.m_impl->original_prot & PAGE_READONLY)
+        if (info.Protect & PAGE_READONLY)
         {
             rtn.m_impl->prot = protection::read;
         }
-        else if (rtn.m_impl->original_prot & PAGE_READWRITE)
+        else if (info.Protect & PAGE_READWRITE)
         {
             rtn.m_impl->prot = protection::read | protection::write;
         }
-        else if (rtn.m_impl->original_prot & PAGE_EXECUTE_READWRITE)
+        else if (info.Protect & (PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
         {
             rtn.m_impl->prot = protection::read | protection::write | protection::execute;
         }
