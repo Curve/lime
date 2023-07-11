@@ -63,3 +63,7 @@ set(lime_tests ON)
 
   target_link_libraries(<YourLibrary> cr::lime)
   ```
+
+# 📖 Examples
+
+https://github.com/Curve/lime/blob/9ca0e477e6d5493f3b82ea79b51a2e2eb9f8b85f/tests/hook.test.cpp#L25-L29
