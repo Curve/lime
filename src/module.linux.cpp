@@ -60,11 +60,6 @@ namespace lime
 
     std::uintptr_t module::symbol(const std::string &name) const
     {
-        if (!m_impl->handle)
-        {
-            return 0;
-        }
-
         auto *addr = dlsym(m_impl->handle, name.c_str());
         return reinterpret_cast<std::uintptr_t>(addr);
     }
