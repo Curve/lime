@@ -54,14 +54,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 include("cmake/cpm.cmake")
 
 CPMAddPackage(
-  NAME           fmt
-  GIT_TAG        10.0.0        
-  GIT_REPOSITORY "https://github.com/fmtlib/fmt"
-)
-
-CPMAddPackage(
   NAME           Zydis
-  GIT_TAG        a6d0c71
+  VERSION        4.0.0
   GIT_REPOSITORY "https://github.com/zyantific/zydis"
   OPTIONS        "ZYDIS_BUILD_TOOLS OFF" "ZYDIS_BUILD_DOXYGEN OFF" "ZYDIS_BUILD_EXAMPLES OFF"
 )
@@ -76,6 +70,7 @@ CPMAddPackage(
   NAME           expected
   GIT_TAG        3f0ca7b
   GIT_REPOSITORY "https://github.com/TartanLlama/expected"
+  OPTIONS        "EXPECTED_BUILD_TESTS OFF"
 )
 
 CPMAddPackage(
@@ -84,13 +79,14 @@ CPMAddPackage(
   GIT_REPOSITORY "https://github.com/boostorg/callable_traits"
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE cr::flags tl::expected fmt Zydis)
+target_link_libraries(${PROJECT_NAME} PUBLIC  cr::flags tl::expected boost_callable_traits)
+target_link_libraries(${PROJECT_NAME} PRIVATE Zydis)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup backends
 # --------------------------------------------------------------------------------------------------------
 
-if (UNIX)
+if (UNIX AND NOT MINGW)
   file(GLOB src "src/*.linux*.cpp")
   
   if (NOT lime_entrypoint)
@@ -98,4 +94,34 @@ if (UNIX)
   endif()
 
   target_sources(${PROJECT_NAME} PRIVATE ${src})
+endif()
+
+if (WIN32)
+  file(GLOB src "src/*.win*.cpp")
+    
+  if (NOT lime_entrypoint)
+    list(FILTER src EXCLUDE REGEX "entrypoint")
+  endif()
+
+  target_sources(${PROJECT_NAME} PRIVATE ${src})
+endif()
+
+# --------------------------------------------------------------------------------------------------------
+# Setup tests
+# --------------------------------------------------------------------------------------------------------
+
+if (lime_tests)
+  CPMAddPackage(
+    NAME           Catch2
+    VERSION        3.3.2
+    GIT_REPOSITORY "https://github.com/catchorg/Catch2"
+  )
+
+  file(GLOB src "tests/*.test.cpp")
+  add_executable(${PROJECT_NAME}_tests ${src})
+
+  target_compile_features(${PROJECT_NAME}_tests INTERFACE cxx_std_20)
+  set_target_properties(${PROJECT_NAME}_tests PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
+
+  target_link_libraries(${PROJECT_NAME}_tests PUBLIC Catch2WithMain ${PROJECT_NAME})
 endif()
