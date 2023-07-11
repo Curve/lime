@@ -7,7 +7,7 @@ namespace lime
     struct instruction::impl
     {
         std::uintptr_t address;
-        std::shared_ptr<page> page;
+        std::shared_ptr<lime::page> page;
     };
 
     instruction::instruction() : m_impl(std::make_unique<impl>()) {}
