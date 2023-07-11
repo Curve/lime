@@ -1,0 +1,71 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - "**/*.md"
+
+name: Run Tests
+jobs:
+  tests-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["cpp"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install build dependencies
+        run: "sudo apt-get update && sudo apt-get install git build-essential cmake"
+
+      - name: Compile
+        run: >
+          mkdir build && cd build
+          && cmake .. -Dlime_tests=ON 
+          && cmake --build . --config Debug
+
+      - name: Run Tests
+        run: "./build/lime_tests"
+
+  test-windows-clang:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["cpp"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Compile
+        run: >
+          mkdir build && cd build
+          && cmake .. -Dlime_tests=ON -T ClangCL -A x64 
+          && cmake --build . --config Debug
+
+      - name: Run Tests
+        run: "./build/Debug/lime_tests.exe"
+
+  test-windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        language: ["cpp"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Compile
+        run: >
+          mkdir build && cd build
+          && cmake .. -Dlime_tests=ON 
+          && cmake --build . --config Debug
+
+      - name: Run Tests
+        run: "./build/Debug/lime_tests.exe"
