@@ -26,13 +26,25 @@ namespace lime
     {
         auto page = lime::page::at(m_impl->address);
 
-        if (!page || !(page->prot() & protection::write))
+        if (!page)
+        {
+            return false;
+        }
+
+        auto writable = page->prot() & protection::write;
+
+        if (!writable && !page->protect(page->prot() | protection::write))
         {
             return false;
         }
 
         auto *dest = reinterpret_cast<void *>(m_impl->address);
         std::memcpy(dest, data, size);
+
+        if (!writable)
+        {
+            page->restore();
+        }
 
         return true;
     }
