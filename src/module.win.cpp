@@ -118,7 +118,7 @@ namespace lime
                 continue;
             }
 
-            module item;
+            lime::module item;
 
             item.m_impl->name = name;
             item.m_impl->info = info;
