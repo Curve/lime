@@ -222,8 +222,8 @@ namespace lime
             # from their relative-amount.
             */
 
-            auto original_rip = static_cast<std::uintptr_t>(*source) + i;
-            auto difference = static_cast<std::int64_t>(current.addr() - original_rip + current.size());
+            auto original_rip = static_cast<std::int64_t>(*source) + i;
+            auto difference = static_cast<std::int64_t>(current.addr()) - original_rip + current.size();
 
             auto disp = current.displacement();
             if (disp.size > 0 && !try_offset(disp, current, difference))
@@ -294,9 +294,9 @@ namespace lime
         return true;
     }
 
-    bool hook_base::impl::try_offset(imm value, std::uintptr_t address, std::intptr_t amount)
+    bool hook_base::impl::try_offset(imm value, std::uintptr_t address, std::int64_t amount)
     {
-        auto is_signed = std::holds_alternative<std::intptr_t>(value.amount);
+        auto is_signed = std::holds_alternative<std::int64_t>(value.amount);
         auto target = address + value.offset;
 
         switch (value.size)
@@ -312,7 +312,7 @@ namespace lime
         return false;
     }
 
-    bool hook_base::impl::try_offset(disp value, std::uintptr_t address, std::intptr_t amount)
+    bool hook_base::impl::try_offset(disp value, std::uintptr_t address, std::int64_t amount)
     {
         auto target = address + value.offset;
 
