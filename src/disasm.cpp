@@ -4,6 +4,7 @@
 #include "instruction.hpp"
 
 #include <cstring>
+#include <cassert>
 #include <Zydis/Zydis.h>
 
 namespace lime

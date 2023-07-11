@@ -1,8 +1,9 @@
 #include "address.hpp"
-#include "instruction.hpp"
+
 #include "page.hpp"
 
 #include <cstring>
+#include <iterator>
 
 namespace lime
 {

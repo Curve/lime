@@ -5,6 +5,8 @@
 #include "constants.hpp"
 #include "instruction.hpp"
 
+#include <cassert>
+
 namespace lime
 {
     struct hook_base::impl

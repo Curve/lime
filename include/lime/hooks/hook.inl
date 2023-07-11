@@ -1,6 +1,8 @@
 #pragma once
 #include "hook.hpp"
 
+#include <cassert>
+
 namespace lime
 {
     template <typename Signature>
