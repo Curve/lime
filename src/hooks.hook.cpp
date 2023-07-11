@@ -223,7 +223,7 @@ namespace lime
             */
 
             auto original_rip = static_cast<std::int64_t>(*source) + i;
-            auto difference = static_cast<std::int64_t>(current.addr()) - original_rip + current.size();
+            auto difference = static_cast<std::int64_t>(current.addr() + current.size()) - original_rip;
 
             auto disp = current.displacement();
             if (disp.size > 0 && !try_offset(disp, current, difference))
