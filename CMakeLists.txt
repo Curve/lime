@@ -104,6 +104,7 @@ if (WIN32)
   endif()
 
   target_sources(${PROJECT_NAME} PRIVATE ${src})
+  target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
