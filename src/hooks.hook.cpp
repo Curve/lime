@@ -160,7 +160,11 @@ namespace lime
         while (required_size > rtn)
         {
             rtn += current.size();
-            current = current.next().value();
+
+            auto next = current.next();
+            assert(((void)"Failed to decode prologue instruction", next));
+
+            current = std::move(next.value());
         }
 
         return rtn;
