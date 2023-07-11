@@ -23,6 +23,8 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
   - Supports Traditional & IDA Signatures
 - Cross-Platform Entrypoint
 
+> Lime follows the `RAII` paradigm, so you won't have to care about manually cleaning anything up (i.e. when allocating a page).
+
 # ⚙️ Configuration
 
 ### Entrypoint
