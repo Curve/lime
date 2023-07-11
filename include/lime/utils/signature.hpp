@@ -1,6 +1,6 @@
 #pragma once
-#include "page.hpp"
-#include "module.hpp"
+#include "../page.hpp"
+#include "../module.hpp"
 
 #include <string>
 #include <memory>
