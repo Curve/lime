@@ -193,7 +193,7 @@ namespace lime
         const auto prot = impl::translate(protection);
         auto *alloc = mmap(addr, size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
-        if (alloc == reinterpret_cast<void *>(-1))
+        if (alloc == MAP_FAILED)
         {
             return nullptr;
         }
@@ -206,12 +206,12 @@ namespace lime
                                                                protection protection)
     {
         auto aligned = where & (getpagesize() - 1) ? (where + getpagesize()) & ~(getpagesize() - 1) : where;
-        auto *alloc = reinterpret_cast<void *>(-1);
+        auto *alloc = MAP_FAILED;
 
         const auto flags = MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE;
         const auto prot = impl::translate(protection);
 
-        while (alloc == reinterpret_cast<void *>(-1))
+        while (alloc == MAP_FAILED)
         {
             const auto diff = aligned - where;
 
