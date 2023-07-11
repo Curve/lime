@@ -38,7 +38,7 @@ namespace lime
         static auto lambda = std::move(target);
 
         static constexpr auto wrapper = std::apply(
-            []<typename... T>(T &&...) consteval {
+            []<typename... T>(T &&...) {
                 return [](T... args) -> rtn_t {
                     return lambda(hook, std::forward<T>(args)...);
                 };
