@@ -5,24 +5,8 @@ project(lime LANGUAGES CXX VERSION 2.0)
 # Library options
 # --------------------------------------------------------------------------------------------------------
 
-option(lime_tests                      "Compile tests"                                      OFF)
-set(lime_entrypoint "OFF" CACHE STRING "Wether or not to enable the cross-platform entry-point")
-
-# --------------------------------------------------------------------------------------------------------
-# Ensure valid entrypoint options
-# --------------------------------------------------------------------------------------------------------
-
-set(lime_entrypoints OFF ON static native)
-set_property(CACHE lime_entrypoint PROPERTY STRINGS ${lime_entrypoints})
-
-if (NOT lime_entrypoint IN_LIST lime_entrypoints)
-    message(FATAL_ERROR "Bad Entrypoint, expected one of ${lime_entrypoints}")
-endif()
-
-if (lime_entrypoint STREQUAL "ON")
-  set(lime_entrypoint "native")
-  message(STATUS "[lime] Entrypoint was set to 'ON', using 'native' as default")
-endif()
+option(lime_tests               "Compile tests"                                      OFF)
+option(lime_static_entrypoint   "Use platform independent entrypoint implementation" OFF)
 
 # --------------------------------------------------------------------------------------------------------
 # CMake options
@@ -104,27 +88,21 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Zydis)
 
 if (UNIX AND NOT MINGW)
   file(GLOB src "src/*.linux*.cpp")
-  list(FILTER src EXCLUDE REGEX "entrypoint")
   target_sources(${PROJECT_NAME} PRIVATE ${src})
 endif()
 
 if (WIN32)
   file(GLOB src "src/*.win*.cpp")
-  list(FILTER src EXCLUDE REGEX "entrypoint")
   target_sources(${PROJECT_NAME} PRIVATE ${src})
   target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
 endif()
 
-if (lime_entrypoint STREQUAL "native")
-  if (WIN32)
-    target_sources(${PROJECT_NAME} PRIVATE "src/entrypoint.win.cpp")
-  else()
-    target_sources(${PROJECT_NAME} PRIVATE "src/entrypoint.linux.cpp")
-  endif()
-endif()
+# --------------------------------------------------------------------------------------------------------
+# Setup cross-platform entrypoint
+# --------------------------------------------------------------------------------------------------------
 
-if (lime_entrypoint STREQUAL "static")
-  target_sources(${PROJECT_NAME} PRIVATE "src/entrypoint.static.cpp")
+if (lime_static_entrypoint)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC LIME_STATIC_ENTRYPOINT)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
