@@ -29,10 +29,10 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
 
 ### Entrypoint
 ```cmake
-set(lime_entrypoint ON)
+set(lime_static_entrypoint ON)
 ```
-> Enables usage of the cross-platform entrypoint.  
-> Requires you to implement `lime::load()` and `lime::unload()`
+> Uses a platform-independent method for the entrypoint implementation.  
+> You do not need to enable this to make use of the cross-platform entrypoint!
 
 ### Tests
 ```cmake
