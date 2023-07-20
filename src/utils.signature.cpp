@@ -31,8 +31,6 @@ namespace lime
 
     bool signature::impl::matches(std::uintptr_t address) const
     {
-        auto found = true;
-
         for (auto j = 0u; mask.size() > j; j++)
         {
             if (mask[j] == '?')
@@ -47,11 +45,10 @@ namespace lime
                 continue;
             }
 
-            found = false;
-            break;
+            return false;
         }
 
-        return found;
+        return true;
     }
 
     std::optional<std::uintptr_t> signature::find() const
@@ -109,9 +106,11 @@ namespace lime
                 continue;
             }
 
-            if (find(page.value()))
+            auto res = find(page.value());
+
+            if (res)
             {
-                return i;
+                return res.value();
             }
 
             i += page->size() - 1;
