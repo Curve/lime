@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.16)
-project(lime LANGUAGES CXX VERSION 2.0)
+cmake_minimum_required(VERSION 3.12)
+project(lime LANGUAGES CXX VERSION 2.1)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -75,7 +75,7 @@ CPMAddPackage(
 
 CPMAddPackage(
   NAME           boost_callable_traits
-  GIT_TAG        2.3.3
+  GIT_TAG        boost-1.82.0
   GIT_REPOSITORY "https://github.com/boostorg/callable_traits"
 )
 
