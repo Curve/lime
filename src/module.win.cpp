@@ -5,6 +5,7 @@
 #include <psapi.h>
 
 #include <functional>
+#include <algorithm>
 
 namespace lime
 {
