@@ -111,6 +111,7 @@ namespace lime
                 continue;
             }
 
+            _strlwr_s(name, MAX_PATH);
             MODULEINFO info;
 
             if (!GetModuleInformation(GetCurrentProcess(), modules[i], &info, sizeof(info)))
@@ -133,7 +134,11 @@ namespace lime
     std::optional<module> module::get(const std::string &name)
     {
         auto all = modules();
-        auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name() == name; });
+
+        auto lower = name;
+        std::transform(lower.begin(), lower.end(), lower.begin(), [](auto c) { return std::tolower(c); });
+
+        auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name() == lower; });
 
         if (module == all.end())
         {
@@ -147,8 +152,11 @@ namespace lime
     {
         auto all = modules();
 
+        auto lower = name;
+        std::transform(lower.begin(), lower.end(), lower.begin(), [](auto c) { return std::tolower(c); });
+
         constexpr auto npos = std::string::npos;
-        auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name().find(name) != npos; });
+        auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name().find(lower) != npos; });
 
         if (module == all.end())
         {
