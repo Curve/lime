@@ -18,6 +18,9 @@ namespace lime
         std::string name;
 
       public:
+        static std::string lower(const std::string &string);
+
+      public:
         void iterate_symbols(const std::function<bool(const std::string &)> &) const;
     };
 
@@ -112,7 +115,6 @@ namespace lime
                 continue;
             }
 
-            _strlwr_s(name, MAX_PATH);
             MODULEINFO info;
 
             if (!GetModuleInformation(GetCurrentProcess(), modules[i], &info, sizeof(info)))
@@ -122,9 +124,9 @@ namespace lime
 
             lime::module item;
 
-            item.m_impl->name = name;
             item.m_impl->info = info;
             item.m_impl->handle = modules[i];
+            item.m_impl->name = impl::lower(name);
 
             rtn.emplace_back(std::move(item));
         }
@@ -135,9 +137,7 @@ namespace lime
     std::optional<module> module::get(const std::string &name)
     {
         auto all = modules();
-
-        auto lower = name;
-        std::transform(lower.begin(), lower.end(), lower.begin(), [](auto c) { return std::tolower(c); });
+        const auto lower = impl::lower(name);
 
         auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name() == lower; });
 
@@ -153,10 +153,8 @@ namespace lime
     {
         auto all = modules();
 
-        auto lower = name;
-        std::transform(lower.begin(), lower.end(), lower.begin(), [](auto c) { return std::tolower(c); });
-
         constexpr auto npos = std::string::npos;
+        const auto lower = impl::lower(name);
         auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name().find(lower) != npos; });
 
         if (module == all.end())
@@ -167,12 +165,21 @@ namespace lime
         return std::move(*module);
     }
 
+    std::string module::impl::lower(const std::string &string)
+    {
+        auto rtn{string};
+        std::transform(rtn.begin(), rtn.end(), rtn.begin(), [](unsigned char c) { return std::tolower(c); });
+
+        return rtn;
+    };
+
     void module::impl::iterate_symbols(const std::function<bool(const std::string &)> &callback) const
     {
         CHAR path[MAX_PATH];
         GetModuleFileNameA(handle, path, MAX_PATH);
 
         _LOADED_IMAGE image;
+
         if (!MapAndLoad(path, nullptr, &image, TRUE, TRUE))
         {
             return;
