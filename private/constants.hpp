@@ -9,7 +9,7 @@ namespace lime
         x64,
     };
 
-    constexpr inline architecture arch = (sizeof(std::uintptr_t)) == 8 ? architecture::x64 : architecture::x86;
+    static constexpr inline architecture arch = (sizeof(std::uintptr_t)) == 8 ? architecture::x64 : architecture::x86;
 
     enum size : std::size_t
     {

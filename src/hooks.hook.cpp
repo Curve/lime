@@ -172,7 +172,7 @@ namespace lime
 
     bool hook_base::impl::build_trampoline()
     {
-        constexpr auto prot = protection::read | protection::write | protection::execute;
+        static constexpr auto prot = protection::read | protection::write | protection::execute;
 
         auto near = !can_relocate_far();
         auto size = estimate_size(near);

@@ -10,7 +10,7 @@
 namespace lime
 {
     //? Max Instruction size on x86_64
-    constexpr inline auto instruction_size = 0x15;
+    static constexpr inline auto instruction_size = 0x15;
 
     auto get_decoder = []() {
         ZydisDecoder decoder;
@@ -124,7 +124,7 @@ namespace lime
             assert(((void)"Failed to decode instruction", false));
         }
 
-        constexpr auto size = sizeof(instruction.raw.imm) / sizeof(instruction.raw.imm[0]);
+        static constexpr auto size = sizeof(instruction.raw.imm) / sizeof(instruction.raw.imm[0]);
 
         std::vector<lime::imm> rtn;
         rtn.reserve(size);
