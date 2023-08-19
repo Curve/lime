@@ -191,6 +191,7 @@ namespace lime
 
         if (!export_directory)
         {
+            UnMapAndLoad(&image);
             return;
         }
 
