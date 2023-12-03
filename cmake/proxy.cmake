@@ -31,7 +31,7 @@ function(lime_mingw_generate_proxy TARGET DEFINITIONS)
     endforeach()
 
     list(LENGTH DEFS EXPORT_COUNT)
-    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/cmake/proxy.cpp.in" ${SRC_FILE})
+    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/proxy.cpp.in" ${SRC_FILE})
 
     target_sources(${TARGET} PUBLIC ${SRC_FILE} ${DEF_FILE})
 endfunction()
