@@ -7,10 +7,10 @@ namespace lime
 {
     inline FARPROC proxy_originals[@EXPORT_COUNT@] = {};
 
-    template <typename T>
-    static inline void setup_proxy(const std::basic_string_view<T>& path)
+    template <typename T = char>
+    static inline void setup_proxy(std::basic_string_view<T> path)
     {
-        auto *const original = LoadLibrary(path.c_str());
+        auto *const original = LoadLibrary(path.data());
 
         #define LIME_LOAD_ORIGINAL(index, name) proxy_originals[(index)-1] = GetProcAddress(original, name);
         LIME_MAP_EXPORTS(LIME_LOAD_ORIGINAL)
