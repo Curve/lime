@@ -26,7 +26,7 @@ namespace lime
                                      delete data;
                                  });
 }();
-#elif defined(WIN32)
+#elif defined(WIN32) || defined(_WIN32)
 #include <windows.h>
 
 BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID reserved)
