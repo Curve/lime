@@ -139,8 +139,9 @@ namespace lime
     instruction instruction::unsafe(std::uintptr_t address)
     {
         instruction rtn;
+
         rtn.m_impl->address = address;
-        rtn.m_impl->page = std::make_shared<lime::page>(page::unsafe(address));
+        rtn.m_impl->page    = std::make_shared<lime::page>(page::unsafe(address));
 
         return rtn;
     }

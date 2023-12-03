@@ -14,6 +14,6 @@ namespace lime
     enum size : std::size_t
     {
         jmp_near = sizeof(std::int32_t) + 1,
-        jmp_far = arch == architecture::x86 ? jmp_near : sizeof(std::uintptr_t) + 6,
+        jmp_far  = arch == architecture::x86 ? jmp_near : sizeof(std::uintptr_t) + 6,
     };
 } // namespace lime

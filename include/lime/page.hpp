@@ -3,15 +3,16 @@
 #include <memory>
 #include <cstdint>
 #include <optional>
-#include <flags/flags.hpp>
+
+#include <flagpp/flags.hpp>
 
 namespace lime
 {
     enum class protection
     {
         none,
-        read = 1 << 0,
-        write = 1 << 1,
+        read    = 1 << 0,
+        write   = 1 << 1,
         execute = 1 << 2,
     };
 
@@ -72,9 +73,10 @@ namespace lime
 
     template <>
     std::shared_ptr<page> page::allocate<alloc_policy::exact>(std::uintptr_t, std::size_t, protection);
+
     template <>
     std::shared_ptr<page> page::allocate<alloc_policy::nearby>(std::uintptr_t, std::size_t, protection);
 } // namespace lime
 
 template <>
-constexpr inline bool flags::enabled<lime::protection> = true;
+constexpr inline bool flagpp::enabled<lime::protection> = true;

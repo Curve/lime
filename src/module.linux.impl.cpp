@@ -5,7 +5,7 @@ namespace lime
     // Thanks to Andrey Belykh (https://stackoverflow.com/a/57099317)
     std::uint32_t module::impl::gnu_symbol_count(ElfW(Addr) address)
     {
-        using header_t = struct
+        struct header_t
         {
             std::uint32_t n_buckets;
             std::uint32_t sym_offset;
@@ -13,10 +13,10 @@ namespace lime
             std::uint32_t bloom_shift;
         };
 
-        auto *header = reinterpret_cast<header_t *>(address);
+        auto *header               = reinterpret_cast<header_t *>(address);
         const auto buckets_address = address + sizeof(header_t) + sizeof(std::uintptr_t) * header->bloom_size;
 
-        auto last_symbol = 0u;
+        auto last_symbol     = 0u;
         auto *bucket_address = reinterpret_cast<std::uint32_t *>(buckets_address);
 
         for (auto i = 0u; header->n_buckets > i; i++)
@@ -74,7 +74,7 @@ namespace lime
             {
                 if (dyn->d_tag == DT_HASH)
                 {
-                    hash_ptr = reinterpret_cast<decltype(hash_ptr)>(dyn->d_un.d_ptr);
+                    hash_ptr     = reinterpret_cast<decltype(hash_ptr)>(dyn->d_un.d_ptr);
                     symbol_count = hash_ptr[1];
                 }
 
