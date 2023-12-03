@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.21)
 project(lime LANGUAGES CXX VERSION 2.1)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
 # --------------------------------------------------------------------------------------------------------
 
-option(lime_tests               "Compile tests"                                      OFF)
+option(lime_tests               "Build tests"                                        OFF)
 option(lime_static_entrypoint   "Use platform independent entrypoint implementation" OFF)
 
 # --------------------------------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ add_library(cr::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
 
-if (UNIX AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+if (UNIX AND PROJECT_IS_TOP_LEVEL)
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
 endif()
 
@@ -57,18 +57,20 @@ CPMAddPackage(
   NAME           Zydis
   VERSION        4.0.0
   GIT_REPOSITORY "https://github.com/zyantific/zydis"
-  OPTIONS        "ZYDIS_BUILD_TOOLS OFF" "ZYDIS_BUILD_DOXYGEN OFF" "ZYDIS_BUILD_EXAMPLES OFF"
+  OPTIONS        "ZYDIS_BUILD_TOOLS OFF" 
+                 "ZYDIS_BUILD_DOXYGEN OFF" 
+                 "ZYDIS_BUILD_EXAMPLES OFF"
 )
 
 CPMAddPackage(
   NAME           flags
-  VERSION        1.0
+  VERSION        2.1
   GIT_REPOSITORY "https://github.com/Curve/flags"
 )
 
 CPMAddPackage(
   NAME           expected
-  GIT_TAG        3f0ca7b
+  VERSION        1.1.0
   GIT_REPOSITORY "https://github.com/TartanLlama/expected"
   OPTIONS        "EXPECTED_BUILD_TESTS OFF"
 )
@@ -79,8 +81,8 @@ CPMAddPackage(
   GIT_REPOSITORY "https://github.com/boostorg/callable_traits"
 )
 
-target_link_libraries(${PROJECT_NAME} PUBLIC  cr::flags tl::expected boost_callable_traits)
 target_link_libraries(${PROJECT_NAME} PRIVATE Zydis)
+target_link_libraries(${PROJECT_NAME} PUBLIC cr::flagpp tl::expected boost_callable_traits)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup backends
@@ -110,17 +112,6 @@ endif()
 # --------------------------------------------------------------------------------------------------------
 
 if (lime_tests)
-  CPMAddPackage(
-    NAME           Catch2
-    VERSION        3.3.2
-    GIT_REPOSITORY "https://github.com/catchorg/Catch2"
-  )
-
-  file(GLOB src "tests/*.test.cpp")
-  add_executable(${PROJECT_NAME}_tests ${src})
-
-  target_compile_features(${PROJECT_NAME}_tests INTERFACE cxx_std_20)
-  set_target_properties(${PROJECT_NAME}_tests PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
-
-  target_link_libraries(${PROJECT_NAME}_tests PUBLIC Catch2WithMain ${PROJECT_NAME})
+  message(STATUS "[lime] Building tests")
+  add_subdirectory(tests)
 endif()
