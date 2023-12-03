@@ -1,5 +1,4 @@
 #pragma once
-#include "../page.hpp"
 
 #include <memory>
 #include <cstdint>
@@ -51,10 +50,11 @@ namespace lime
     consteval auto lambda_target()
     {
         using args_t = boost::callable_traits::args_t<Signature>;
-        using rtn_t = boost::callable_traits::return_type_t<Signature>;
+        using rtn_t  = boost::callable_traits::return_type_t<Signature>;
 
         return std::apply(
-            []<typename... T>(T &&...) {
+            []<typename... T>(T &&...)
+            {
                 using func_t = std::function<rtn_t(Hook, T...)>;
                 return std::type_identity<func_t>{};
             },
@@ -68,7 +68,7 @@ namespace lime
     class hook : public hook_base
     {
         using signature_t = std::conditional_t<std::is_pointer_v<Signature>, Signature, Signature *>;
-        using rtn_t = tl::expected<std::unique_ptr<hook>, hook_error>;
+        using rtn_t       = tl::expected<std::unique_ptr<hook>, hook_error>;
 
       public:
         signature_t original() const;

@@ -34,21 +34,23 @@ namespace lime
     void hook<Signature>::create(Source source, lambda_target_t<hook *, Signature> &&target)
     {
         using args_t = boost::callable_traits::args_t<Signature>;
-        using rtn_t = boost::callable_traits::return_type_t<Signature>;
+        using rtn_t  = boost::callable_traits::return_type_t<Signature>;
 
         static hook<Signature> *hook;
         static auto lambda = std::move(target);
 
         static constexpr auto wrapper = std::apply(
-            []<typename... T>(T &&...) {
-                return [](T... args) -> rtn_t {
+            []<typename... T>(T &&...)
+            {
+                return [](T... args) -> rtn_t
+                {
                     return lambda(hook, std::forward<T>(args)...);
                 };
             },
             args_t{});
 
         auto _hook = create(source, +wrapper);
-        assert(((void)"Failed to create hook", _hook));
+        assert(_hook && "Failed to create hook");
 
         hook = _hook->release();
     }

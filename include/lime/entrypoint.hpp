@@ -10,17 +10,21 @@ namespace lime
 #include <memory>
 
 // NOLINTNEXTLINE(cert-err58-cpp, *-namespace)
-[[maybe_unused]] static auto constructor = []() {
+[[maybe_unused]] static auto constructor = []()
+{
     lime::load();
     return 1;
 }();
 
 // NOLINTNEXTLINE(cert-err58-cpp, *-namespace)
-[[maybe_unused]] static auto destructor = []() {
-    return std::shared_ptr<char>(new char, [](auto *data) {
-        lime::unload();
-        delete data;
-    });
+[[maybe_unused]] static auto destructor = []()
+{
+    return std::shared_ptr<char>(new char,
+                                 [](auto *data)
+                                 {
+                                     lime::unload();
+                                     delete data;
+                                 });
 }();
 #elif defined(WIN32)
 #include <windows.h>
