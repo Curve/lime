@@ -52,7 +52,7 @@ namespace lime
 
     std::vector<std::uint8_t> address::copy(std::size_t size)
     {
-        auto *src = reinterpret_cast<std::uint8_t *>(m_impl->address);
+        const auto *src = reinterpret_cast<std::uint8_t *>(m_impl->address);
 
         std::vector<std::uint8_t> rtn;
         std::copy(src, src + size, std::back_inserter(rtn));
@@ -92,7 +92,7 @@ namespace lime
 
     std::strong_ordering address::operator<=>(const address &other) const
     {
-        auto address = static_cast<std::uintptr_t>(other);
+        const auto address = static_cast<std::uintptr_t>(other);
 
         if (address > m_impl->address)
         {
@@ -110,6 +110,7 @@ namespace lime
     address address::unsafe(std::uintptr_t address)
     {
         lime::address rtn;
+
         rtn.m_impl->address = address;
 
         return rtn;
@@ -117,7 +118,7 @@ namespace lime
 
     std::optional<address> address::at(std::uintptr_t address)
     {
-        auto page = page::at(address);
+        const auto page = page::at(address);
 
         if (!page || !(page->prot() & protection::read))
         {

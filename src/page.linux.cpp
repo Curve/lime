@@ -7,6 +7,7 @@
 #include <array>
 #include <limits>
 #include <fstream>
+#include <algorithm>
 #include <filesystem>
 
 namespace lime
@@ -23,9 +24,27 @@ namespace lime
         std::uintptr_t start;
 
       public:
-        static int translate(protection);
         static std::shared_ptr<page> from(void *, std::size_t, protection);
     };
+
+    std::shared_ptr<page> page::impl::from(void *address, std::size_t size, protection protection)
+    {
+        auto *rtn = new page;
+
+        rtn->m_impl->start = reinterpret_cast<std::uintptr_t>(address);
+        rtn->m_impl->end   = rtn->m_impl->start + size;
+
+        rtn->m_impl->original_prot = static_cast<int>(protection);
+        rtn->m_impl->prot          = protection;
+
+        auto deleter = [](page *page)
+        {
+            munmap(reinterpret_cast<void *>(page->start()), page->size());
+            delete page;
+        };
+
+        return {rtn, deleter};
+    }
 
     page::page() : m_impl(std::make_unique<impl>()) {}
 
@@ -71,32 +90,20 @@ namespace lime
             return false;
         }
 
-        m_impl->prot = protection::none;
-
-        if (m_impl->original_prot & PROT_READ)
-        {
-            m_impl->prot |= protection::read;
-        }
-        if (m_impl->original_prot & PROT_WRITE)
-        {
-            m_impl->prot |= protection::write;
-        }
-        if (m_impl->original_prot & PROT_EXEC)
-        {
-            m_impl->prot |= protection::execute;
-        }
+        m_impl->prot = static_cast<protection>(m_impl->original_prot);
 
         return true;
     }
 
     bool page::protect(protection prot)
     {
-        if (mprotect(reinterpret_cast<void *>(start()), size(), impl::translate(prot)) != 0)
+        if (mprotect(reinterpret_cast<void *>(start()), size(), static_cast<int>(prot)) != 0)
         {
             return false;
         }
 
         m_impl->prot = prot;
+
         return true;
     }
 
@@ -107,7 +114,7 @@ namespace lime
 
         if (maps.fail())
         {
-            assert(((void)"Failed to open /proc/self/maps", false));
+            assert(false && "Failed to open /proc/self/maps");
             return {};
         }
 
@@ -125,12 +132,12 @@ namespace lime
 
             if (read != 3)
             {
-                assert(((void)"Failed to read line", false));
+                assert(false && "Failed to read line");
                 continue;
             }
 
             page item;
-            item.m_impl->end = end;
+            item.m_impl->end   = end;
             item.m_impl->start = start;
 
             if (permissions[0] == 'r')
@@ -146,7 +153,7 @@ namespace lime
                 item.m_impl->prot |= protection::execute;
             }
 
-            item.m_impl->original_prot = impl::translate(item.m_impl->prot);
+            item.m_impl->original_prot = static_cast<int>(item.m_impl->prot);
 
             rtn.emplace_back(std::move(item));
         }
@@ -162,22 +169,17 @@ namespace lime
 
     std::optional<page> page::at(std::uintptr_t address)
     {
-        for (const auto &page : pages())
+        auto pages = page::pages();
+
+        auto it = std::find_if(pages.begin(), pages.end(),
+                               [&](const auto &page) { return address >= page.start() && address <= page.end(); });
+
+        if (it == pages.end())
         {
-            if (address < page.start())
-            {
-                continue;
-            }
-
-            if (address > page.end())
-            {
-                continue;
-            }
-
-            return page;
+            return std::nullopt;
         }
 
-        return std::nullopt;
+        return *it;
     }
 
     std::shared_ptr<page> page::allocate(std::size_t size, protection prot)
@@ -189,9 +191,9 @@ namespace lime
     std::shared_ptr<page> page::allocate<alloc_policy::exact>(std::uintptr_t where, std::size_t size,
                                                               protection protection)
     {
-        auto *addr = reinterpret_cast<void *>(where);
-        const auto prot = impl::translate(protection);
-        auto *alloc = mmap(addr, size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+        auto *addr      = reinterpret_cast<void *>(where);
+        const auto prot = static_cast<int>(protection);
+        auto *alloc     = mmap(addr, size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 
         if (alloc == MAP_FAILED)
         {
@@ -206,10 +208,10 @@ namespace lime
                                                                protection protection)
     {
         auto aligned = where & (getpagesize() - 1) ? (where + getpagesize()) & ~(getpagesize() - 1) : where;
-        auto *alloc = MAP_FAILED;
+        auto *alloc  = MAP_FAILED;
 
         const auto flags = MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE;
-        const auto prot = impl::translate(protection);
+        const auto prot  = static_cast<int>(protection);
 
         while (alloc == MAP_FAILED)
         {
@@ -220,48 +222,10 @@ namespace lime
                 return nullptr;
             }
 
-            alloc = mmap(reinterpret_cast<void *>(aligned), size, prot, flags, -1, 0);
+            alloc   = mmap(reinterpret_cast<void *>(aligned), size, prot, flags, -1, 0);
             aligned = (aligned + getpagesize()) & ~(getpagesize() - 1);
         }
 
         return impl::from(alloc, size, protection);
-    }
-
-    int page::impl::translate(protection prot)
-    {
-        auto rtn = PROT_NONE;
-
-        if (prot & protection::read)
-        {
-            rtn |= PROT_READ;
-        }
-        if (prot & protection::write)
-        {
-            rtn |= PROT_WRITE;
-        }
-        if (prot & protection::execute)
-        {
-            rtn |= PROT_EXEC;
-        }
-
-        return rtn;
-    }
-
-    std::shared_ptr<page> page::impl::from(void *address, std::size_t size, protection protection)
-    {
-        auto *rtn = new page;
-
-        rtn->m_impl->start = reinterpret_cast<std::uintptr_t>(address);
-        rtn->m_impl->end = rtn->m_impl->start + size;
-
-        rtn->m_impl->original_prot = translate(protection);
-        rtn->m_impl->prot = protection;
-
-        auto deleter = [](page *page) {
-            munmap(reinterpret_cast<void *>(page->start()), page->size());
-            delete page;
-        };
-
-        return {rtn, deleter};
     }
 } // namespace lime

@@ -84,10 +84,12 @@ namespace lime
 
         for (auto i = page.start(); end > i; i++)
         {
-            if (m_impl->matches(i))
+            if (!m_impl->matches(i))
             {
-                return i;
+                continue;
             }
+
+            return i;
         }
 
         return std::nullopt;
@@ -198,6 +200,7 @@ namespace lime
     signature signature::from(const std::string &ida_pattern, protection required)
     {
         signature rtn;
+
         rtn.m_impl->required = required;
 
         auto pattern = std::stringstream{ida_pattern};
@@ -225,10 +228,10 @@ namespace lime
     signature signature::from(const char *pattern, std::string mask, protection required)
     {
         signature rtn;
-        rtn.m_impl->required = required;
 
-        rtn.m_impl->pattern = std::string{pattern, mask.size()};
-        rtn.m_impl->mask = std::move(mask);
+        rtn.m_impl->pattern  = {pattern, mask.size()};
+        rtn.m_impl->mask     = std::move(mask);
+        rtn.m_impl->required = required;
 
         return rtn;
     }

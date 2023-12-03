@@ -59,10 +59,15 @@ namespace lime
     {
         std::vector<lime::symbol> rtn;
 
-        m_impl->iterate_symbols([&](const std::string &name) {
-            rtn.emplace_back(lime::symbol{.name = name, .address = symbol(name)});
+        auto fn = [&](std::string name)
+        {
+            auto sym = symbol(name);
+            rtn.emplace_back(lime::symbol{.name = std::move(name), .address = sym});
+
             return false;
-        });
+        };
+
+        m_impl->iterate_symbols(fn);
 
         return rtn;
     }
@@ -76,7 +81,8 @@ namespace lime
     {
         std::uintptr_t rtn{0};
 
-        m_impl->iterate_symbols([&](const std::string &item) {
+        auto fn = [&](const std::string &item)
+        {
             if (item.find(name) == std::string::npos)
             {
                 return false;
@@ -84,7 +90,9 @@ namespace lime
 
             rtn = symbol(item);
             return true;
-        });
+        };
+
+        m_impl->iterate_symbols(fn);
 
         if (!rtn)
         {
@@ -124,9 +132,9 @@ namespace lime
 
             lime::module item;
 
-            item.m_impl->info = info;
+            item.m_impl->info   = info;
             item.m_impl->handle = modules[i];
-            item.m_impl->name = impl::lower(name);
+            item.m_impl->name   = impl::lower(name);
 
             rtn.emplace_back(std::move(item));
         }
@@ -136,33 +144,33 @@ namespace lime
 
     std::optional<module> module::get(const std::string &name)
     {
-        auto all = modules();
+        auto all         = modules();
         const auto lower = impl::lower(name);
 
-        auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name() == lower; });
+        auto it = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name() == lower; });
 
-        if (module == all.end())
+        if (it == all.end())
         {
             return std::nullopt;
         }
 
-        return std::move(*module);
+        return std::move(*it);
     }
 
     std::optional<module> module::find(const std::string &name)
     {
-        auto all = modules();
+        static constexpr auto npos = std::string::npos;
+        const auto lower           = impl::lower(name);
+        auto all                   = modules();
 
-        constexpr auto npos = std::string::npos;
-        const auto lower = impl::lower(name);
-        auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name().find(lower) != npos; });
+        auto it = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name().find(lower) != npos; });
 
-        if (module == all.end())
+        if (it == all.end())
         {
             return std::nullopt;
         }
 
-        return std::move(*module);
+        return std::move(*it);
     }
 
     std::string module::impl::lower(const std::string &string)

@@ -53,7 +53,7 @@ namespace lime
 
         if (!m_impl->source_page->protect(protection::read | protection::write | protection::execute))
         {
-            assert(((void)"Failed to protect original function for restoration", false));
+            assert(false && "Failed to protect original function for restoration");
             return;
         }
 
@@ -68,7 +68,7 @@ namespace lime
 
     hook_base::rtn_t hook_base::create(std::uintptr_t source, std::uintptr_t target)
     {
-        auto rtn = std::unique_ptr<hook_base>(new hook_base);
+        auto rtn  = std::unique_ptr<hook_base>(new hook_base);
         auto page = page::at(source);
 
         if (!page)
@@ -84,9 +84,9 @@ namespace lime
             page.emplace(page::unsafe(start));
         }
 
-        rtn->m_impl->source = std::make_unique<address>(address::unsafe(start));
-        rtn->m_impl->source_page = std::make_unique<lime::page>(page.value());
-        rtn->m_impl->target = target;
+        rtn->m_impl->source      = std::make_unique<address>(address::unsafe(std::move(start)));
+        rtn->m_impl->source_page = std::make_unique<lime::page>(std::move(page.value()));
+        rtn->m_impl->target      = target;
 
         /*
         # We will now try to create a springboard and check how many bytes of the prologue we'll have to overwrite
@@ -102,8 +102,8 @@ namespace lime
         # the springboard.
         */
 
-        auto prologue_size = rtn->m_impl->create_springboard();
-        rtn->m_impl->prologue = rtn->m_impl->source->copy(prologue_size);
+        const auto prologue_size = rtn->m_impl->create_springboard();
+        rtn->m_impl->prologue    = rtn->m_impl->source->copy(prologue_size);
 
         /*
         # We will now try to relocate the function prologue to our trampoline
@@ -124,19 +124,19 @@ namespace lime
         # Now we'll jump to the springboard/target
         */
 
-        auto destination = rtn->m_impl->spring_board ? rtn->m_impl->spring_board->start() : target;
-        auto near = static_cast<bool>(rtn->m_impl->spring_board);
+        const auto destination = rtn->m_impl->spring_board ? rtn->m_impl->spring_board->start() : target;
+        const auto near        = static_cast<bool>(rtn->m_impl->spring_board);
 
         auto jmp = impl::make_jmp(*rtn->m_impl->source, destination, near);
 
-        auto remaining = static_cast<int>(prologue_size - jmp.size());
-        if (remaining > 0)
+        if (auto remaining = static_cast<int>(prologue_size - jmp.size()); remaining > 0)
         {
             std::vector<std::uint8_t> nop(remaining, 0x90);
             jmp.insert(jmp.end(), nop.begin(), nop.end());
         }
 
-        auto prot = protection::read | protection::write | protection::execute;
+        static constexpr auto prot = protection::read | protection::write | protection::execute;
+
         if (!rtn->m_impl->source_page->protect(prot))
         {
             return tl::make_unexpected(hook_error::protect);
@@ -150,19 +150,20 @@ namespace lime
 
     std::size_t hook_base::impl::create_springboard()
     {
-        auto prot = protection::read | protection::write | protection::execute;
-        spring_board = page::allocate<alloc_policy::nearby>(*source, size::jmp_far, prot);
+        static constexpr auto prot = protection::read | protection::write | protection::execute;
+        spring_board               = page::allocate<alloc_policy::nearby>(*source, size::jmp_far, prot);
 
-        auto required_size = spring_board ? size::jmp_near : size::jmp_far;
-        auto rtn = 0u;
+        const auto required_size = spring_board ? size::jmp_near : size::jmp_far;
+        auto rtn                 = 0u;
 
         auto current = instruction::unsafe(*source);
+
         while (required_size > rtn)
         {
             rtn += current.size();
 
             auto next = current.next();
-            assert(((void)"Failed to decode prologue instruction", next));
+            assert(next && "Failed to decode prologue instruction");
 
             current = std::move(next.value());
         }
@@ -174,8 +175,8 @@ namespace lime
     {
         static constexpr auto prot = protection::read | protection::write | protection::execute;
 
-        auto near = !can_relocate_far();
-        auto size = estimate_size(near);
+        const auto near = !can_relocate_far();
+        const auto size = estimate_size(near);
 
         if (near)
         {
@@ -195,8 +196,8 @@ namespace lime
         # First, we write the prologue to our trampoline
         */
 
-        auto skip = spring_board ? size::jmp_near : size::jmp_far;
-        auto jump_back = impl::make_jmp(trampoline->start() + prologue.size(), source->addr() + skip, near);
+        const auto skip      = spring_board ? size::jmp_near : size::jmp_far;
+        const auto jump_back = impl::make_jmp(trampoline->start() + prologue.size(), source->addr() + skip, near);
 
         auto body = prologue;
         body.insert(body.end(), jump_back.begin(), jump_back.end());
@@ -207,7 +208,7 @@ namespace lime
         # Next, we fix-up the relocated instructions
         */
 
-        auto prologue_end = address::unsafe(trampoline->start() + prologue.size() + size::jmp_far);
+        const auto prologue_end = address::unsafe(trampoline->start() + prologue.size() + size::jmp_far);
         std::vector<std::uint8_t> jump_table;
 
         auto i = 0u;
@@ -228,16 +229,17 @@ namespace lime
             # from their relative-amount.
             */
 
-            auto original_rip = static_cast<std::int64_t>(*source) + i;
-            auto difference = static_cast<std::int64_t>(current.addr() + current.size()) - original_rip;
+            const auto original_rip = static_cast<std::int64_t>(*source) + i;
+            const auto difference   = static_cast<std::int64_t>(current.addr() + current.size()) - original_rip;
 
-            auto disp = current.displacement();
+            const auto disp = current.displacement();
+
             if (disp.size > 0 && !try_offset(disp, current, difference))
             {
                 return false;
             }
 
-            auto immediates = current.immediates();
+            const auto immediates = current.immediates();
 
             for (const auto &imm : immediates)
             {
@@ -260,14 +262,14 @@ namespace lime
                 # We failed to offset, thus we have to fall back to a jump-table at the end of the trampoline
                  */
 
-                std::int64_t imm_value{};
-                std::visit([&imm_value](auto amount) { imm_value = static_cast<std::int64_t>(amount); }, imm.amount);
+                const auto imm_value =
+                    std::visit([](auto amount) { return static_cast<std::int64_t>(amount); }, imm.amount);
 
-                auto rel_jump = (prologue_end.addr() - current.addr() - current.size()) + jump_table.size();
-                auto offset = -imm_value + static_cast<std::int64_t>(rel_jump);
+                const auto rel_jump = (prologue_end.addr() - current.addr() - current.size()) + jump_table.size();
+                const auto offset   = -imm_value + static_cast<std::int64_t>(rel_jump);
 
-                auto destination = original_rip + imm_value;
-                auto table_entry = impl::make_jmp(current, destination, near);
+                const auto destination = original_rip + imm_value;
+                const auto table_entry = impl::make_jmp(current, destination, near);
 
                 jump_table.insert(jump_table.end(), table_entry.begin(), table_entry.end());
 
@@ -288,8 +290,8 @@ namespace lime
     {
         auto &original = *reinterpret_cast<T *>(address);
 
-        auto first = original - static_cast<T>(amount);
-        auto second = static_cast<std::int64_t>(original) - amount;
+        const auto first  = original - static_cast<T>(amount);
+        const auto second = static_cast<std::int64_t>(original) - amount;
 
         if (first != second)
         {
@@ -302,8 +304,8 @@ namespace lime
 
     bool hook_base::impl::try_offset(imm value, std::uintptr_t address, std::int64_t amount)
     {
-        auto is_signed = std::holds_alternative<std::int64_t>(value.amount);
-        auto target = address + value.offset;
+        const auto is_signed = std::holds_alternative<std::int64_t>(value.amount);
+        const auto target    = address + value.offset;
 
         switch (value.size)
         {
@@ -320,7 +322,7 @@ namespace lime
 
     bool hook_base::impl::try_offset(disp value, std::uintptr_t address, std::int64_t amount)
     {
-        auto target = address + value.offset;
+        const auto target = address + value.offset;
 
         switch (value.size)
         {
@@ -338,9 +340,10 @@ namespace lime
     bool hook_base::impl::can_relocate_far()
     {
         auto i = 0u;
+
         while (prologue.size() > i)
         {
-            auto current = instruction::unsafe(reinterpret_cast<std::uintptr_t>(prologue.data() + i));
+            const auto current = instruction::unsafe(reinterpret_cast<std::uintptr_t>(prologue.data() + i));
             i += current.size();
 
             if (!current.relative())
@@ -361,12 +364,13 @@ namespace lime
 
     std::size_t hook_base::impl::estimate_size(bool near)
     {
-        auto size = size::jmp_far + prologue.size();
+        const auto size = size::jmp_far + prologue.size();
 
         auto i = 0u;
+
         while (prologue.size() > i)
         {
-            auto current = instruction::unsafe(reinterpret_cast<std::uintptr_t>(prologue.data() + i));
+            const auto current = instruction::unsafe(reinterpret_cast<std::uintptr_t>(prologue.data() + i));
             i += current.size();
 
             if (!current.relative())

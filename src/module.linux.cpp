@@ -50,10 +50,15 @@ namespace lime
     {
         std::vector<lime::symbol> rtn;
 
-        m_impl->iterate_symbols([&](const std::string &name) {
-            rtn.emplace_back(lime::symbol{.name = name, .address = symbol(name)});
+        auto fn = [&](std::string name)
+        {
+            auto sym = symbol(name);
+            rtn.emplace_back(lime::symbol{.name = std::move(name), .address = sym});
+
             return false;
-        });
+        };
+
+        m_impl->iterate_symbols(fn);
 
         return rtn;
     }
@@ -68,7 +73,8 @@ namespace lime
     {
         std::uintptr_t rtn{0};
 
-        m_impl->iterate_symbols([&](const std::string &item) {
+        auto fn = [&](const std::string &item)
+        {
             if (item.find(name) == std::string::npos)
             {
                 return false;
@@ -76,7 +82,9 @@ namespace lime
 
             rtn = symbol(item);
             return true;
-        });
+        };
+
+        m_impl->iterate_symbols(fn);
 
         if (!rtn)
         {
@@ -90,7 +98,8 @@ namespace lime
     {
         std::vector<module> rtn;
 
-        auto callback = [](dl_phdr_info *info, std::size_t, void *data) {
+        auto callback = [](dl_phdr_info *info, std::size_t, void *data)
+        {
             auto &res = *reinterpret_cast<decltype(rtn) *>(data);
 
             if (!info)
@@ -100,7 +109,7 @@ namespace lime
 
             module current;
 
-            current.m_impl->info = *info;
+            current.m_impl->info   = *info;
             current.m_impl->handle = dlopen(current.name().c_str(), RTLD_NOLOAD | RTLD_LAZY);
 
             res.emplace_back(std::move(current));
@@ -114,7 +123,7 @@ namespace lime
 
     std::optional<module> module::get(const std::string &name)
     {
-        auto all = modules();
+        auto all    = modules();
         auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name() == name; });
 
         if (module == all.end())

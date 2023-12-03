@@ -5,6 +5,7 @@
 
 #include <cstring>
 #include <cassert>
+
 #include <Zydis/Zydis.h>
 
 namespace lime
@@ -12,7 +13,8 @@ namespace lime
     //? Max Instruction size on x86_64
     static constexpr inline auto instruction_size = 0x15;
 
-    auto get_decoder = []() {
+    auto get_decoder = []()
+    {
         ZydisDecoder decoder;
 
         if constexpr (arch == architecture::x64)
@@ -29,8 +31,8 @@ namespace lime
 
     bool disasm::valid(std::uintptr_t address)
     {
-        auto decoder = get_decoder();
-        auto *buffer = reinterpret_cast<void *>(address);
+        const auto decoder = get_decoder();
+        const auto *buffer = reinterpret_cast<void *>(address);
 
         ZydisDecodedInstruction instruction;
         return ZYAN_SUCCESS(ZydisDecoderDecodeInstruction(&decoder, nullptr, buffer, instruction_size, &instruction));
@@ -38,14 +40,14 @@ namespace lime
 
     bool disasm::relative(std::uintptr_t address)
     {
-        auto decoder = get_decoder();
-        auto *buffer = reinterpret_cast<void *>(address);
+        const auto decoder = get_decoder();
+        const auto *buffer = reinterpret_cast<void *>(address);
 
         ZydisDecodedInstruction instruction;
 
         if (not ZYAN_SUCCESS(ZydisDecoderDecodeInstruction(&decoder, nullptr, buffer, instruction_size, &instruction)))
         {
-            assert(((void)"Failed to decode instruction", false));
+            assert(false && "Failed to decode instruction");
         }
 
         return instruction.attributes & ZYDIS_ATTRIB_IS_RELATIVE;
@@ -53,14 +55,14 @@ namespace lime
 
     bool disasm::branching(std::uintptr_t address)
     {
-        auto decoder = get_decoder();
-        auto *buffer = reinterpret_cast<void *>(address);
+        const auto decoder = get_decoder();
+        const auto *buffer = reinterpret_cast<void *>(address);
 
         ZydisDecodedInstruction instruction;
 
         if (not ZYAN_SUCCESS(ZydisDecoderDecodeInstruction(&decoder, nullptr, buffer, instruction_size, &instruction)))
         {
-            assert(((void)"Failed to decode instruction", false));
+            assert(false && "Failed to decode instruction");
         }
 
         return instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
@@ -68,14 +70,14 @@ namespace lime
 
     std::size_t disasm::size(std::uintptr_t address)
     {
-        auto decoder = get_decoder();
-        auto *buffer = reinterpret_cast<void *>(address);
+        const auto decoder = get_decoder();
+        const auto *buffer = reinterpret_cast<void *>(address);
 
         ZydisDecodedInstruction instruction;
 
         if (not ZYAN_SUCCESS(ZydisDecoderDecodeInstruction(&decoder, nullptr, buffer, instruction_size, &instruction)))
         {
-            assert(((void)"Failed to decode instruction", false));
+            assert(false && "Failed to decode instruction");
         }
 
         return instruction.length;
@@ -83,14 +85,14 @@ namespace lime
 
     std::size_t disasm::mnemonic(std::uintptr_t address)
     {
-        auto decoder = get_decoder();
-        auto *buffer = reinterpret_cast<void *>(address);
+        const auto decoder = get_decoder();
+        const auto *buffer = reinterpret_cast<void *>(address);
 
         ZydisDecodedInstruction instruction;
 
         if (not ZYAN_SUCCESS(ZydisDecoderDecodeInstruction(&decoder, nullptr, buffer, instruction_size, &instruction)))
         {
-            assert(((void)"Failed to decode instruction", false));
+            assert(false && "Failed to decode instruction");
         }
 
         return instruction.mnemonic;
@@ -98,30 +100,30 @@ namespace lime
 
     disp disasm::displacement(std::uintptr_t address)
     {
-        auto decoder = get_decoder();
-        auto *buffer = reinterpret_cast<void *>(address);
+        const auto decoder = get_decoder();
+        const auto *buffer = reinterpret_cast<void *>(address);
 
         ZydisDecodedInstruction instruction;
 
         if (not ZYAN_SUCCESS(ZydisDecoderDecodeInstruction(&decoder, nullptr, buffer, instruction_size, &instruction)))
         {
-            assert(((void)"Failed to decode instruction", false));
+            assert("Failed to decode instruction" && false);
         }
 
-        auto &raw_disp = instruction.raw.disp;
+        const auto &raw_disp = instruction.raw.disp;
         return {.amount = raw_disp.value, .size = raw_disp.size, .offset = raw_disp.offset};
     }
 
     std::vector<imm> disasm::immediates(std::uintptr_t address)
     {
-        auto decoder = get_decoder();
-        auto *buffer = reinterpret_cast<void *>(address);
+        const auto decoder = get_decoder();
+        const auto *buffer = reinterpret_cast<void *>(address);
 
         ZydisDecodedInstruction instruction;
 
         if (not ZYAN_SUCCESS(ZydisDecoderDecodeInstruction(&decoder, nullptr, buffer, instruction_size, &instruction)))
         {
-            assert(((void)"Failed to decode instruction", false));
+            assert(false && "Failed to decode instruction");
         }
 
         static constexpr auto size = sizeof(instruction.raw.imm) / sizeof(instruction.raw.imm[0]);
@@ -133,8 +135,8 @@ namespace lime
         {
             auto item = lime::imm{};
 
-            item.size = imm.size;
-            item.offset = imm.offset;
+            item.size     = imm.size;
+            item.offset   = imm.offset;
             item.relative = imm.is_relative;
 
             if (imm.is_signed)
@@ -154,15 +156,15 @@ namespace lime
 
     std::optional<std::uintptr_t> disasm::follow(std::uintptr_t address)
     {
-        auto decoder = get_decoder();
-        auto *buffer = reinterpret_cast<void *>(address);
+        const auto decoder = get_decoder();
+        const auto *buffer = reinterpret_cast<void *>(address);
 
         ZydisDecodedInstruction instruction;
         ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
 
         if (not ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, buffer, instruction_size, &instruction, operands)))
         {
-            assert(((void)"Failed to decode instruction", false));
+            assert(false && "Failed to decode instruction");
         }
 
         ZyanU64 result = 0;

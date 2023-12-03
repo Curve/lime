@@ -16,9 +16,71 @@ namespace lime
         std::uintptr_t start;
 
       public:
+        static protection translate(DWORD);
         static DWORD translate(protection);
+
+      public:
         static std::shared_ptr<page> from(LPVOID, std::size_t, protection);
     };
+
+    protection page::impl::translate(DWORD prot)
+    {
+        protection rtn{protection::none};
+
+        if (prot & PAGE_READONLY)
+        {
+            rtn = protection::read;
+        }
+        else if (prot & PAGE_READWRITE)
+        {
+            rtn = protection::read | protection::write;
+        }
+        else if (prot & (PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        {
+            rtn = protection::read | protection::write | protection::execute;
+        }
+
+        return rtn;
+    }
+
+    DWORD page::impl::translate(protection prot)
+    {
+        DWORD rtn{0};
+
+        if (prot & protection::read)
+        {
+            rtn = PAGE_READONLY;
+        }
+        if (prot & protection::write)
+        {
+            rtn = PAGE_READWRITE;
+        }
+        if (prot & protection::execute)
+        {
+            rtn = PAGE_EXECUTE_READWRITE;
+        }
+
+        return rtn;
+    }
+
+    std::shared_ptr<page> page::impl::from(LPVOID address, std::size_t size, protection protection)
+    {
+        auto *rtn = new page;
+
+        rtn->m_impl->start = reinterpret_cast<std::uintptr_t>(address);
+        rtn->m_impl->end   = rtn->m_impl->start + size;
+
+        rtn->m_impl->original_prot = translate(protection);
+        rtn->m_impl->prot          = protection;
+
+        auto deleter = [](page *page)
+        {
+            VirtualFree(reinterpret_cast<LPVOID>(page->start()), page->size(), MEM_RELEASE);
+            delete page;
+        };
+
+        return {rtn, deleter};
+    }
 
     page::page() : m_impl(std::make_unique<impl>()) {}
 
@@ -66,18 +128,7 @@ namespace lime
             return false;
         }
 
-        if (m_impl->original_prot & PAGE_READONLY)
-        {
-            m_impl->prot = protection::read;
-        }
-        else if (m_impl->original_prot & PAGE_READWRITE)
-        {
-            m_impl->prot = protection::read | protection::write;
-        }
-        else if (m_impl->original_prot & PAGE_EXECUTE_READWRITE)
-        {
-            m_impl->prot = protection::read | protection::write | protection::execute;
-        }
+        m_impl->prot = impl::translate(m_impl->original_prot);
 
         return true;
     }
@@ -92,6 +143,7 @@ namespace lime
         }
 
         m_impl->prot = prot;
+
         return true;
     }
 
@@ -105,9 +157,7 @@ namespace lime
         while (VirtualQuery(address, &info, sizeof(info)))
         {
             auto base = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
-
-            // NOLINTNEXTLINE(*-optional-access)
-            rtn.emplace_back(std::move(at(base).value()));
+            rtn.emplace_back(std::move(unsafe(base)));
 
             address = reinterpret_cast<void *>(base + info.RegionSize);
         }
@@ -130,26 +180,14 @@ namespace lime
             return std::nullopt;
         }
 
-        auto base = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
+        const auto base = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
 
         page rtn;
 
-        rtn.m_impl->start = base;
-        rtn.m_impl->end = base + info.RegionSize;
+        rtn.m_impl->start         = base;
+        rtn.m_impl->end           = base + info.RegionSize;
         rtn.m_impl->original_prot = info.Protect;
-
-        if (info.Protect & PAGE_READONLY)
-        {
-            rtn.m_impl->prot = protection::read;
-        }
-        else if (info.Protect & PAGE_READWRITE)
-        {
-            rtn.m_impl->prot = protection::read | protection::write;
-        }
-        else if (info.Protect & (PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
-        {
-            rtn.m_impl->prot = protection::read | protection::write | protection::execute;
-        }
+        rtn.m_impl->prot          = impl::translate(info.Protect);
 
         return rtn;
     }
@@ -163,9 +201,9 @@ namespace lime
     std::shared_ptr<page> page::allocate<alloc_policy::exact>(std::uintptr_t where, std::size_t size,
                                                               protection protection)
     {
-        auto *addr = reinterpret_cast<LPVOID>(where);
+        auto *addr      = reinterpret_cast<LPVOID>(where);
         const auto prot = impl::translate(protection);
-        auto *alloc = VirtualAlloc(addr, size, MEM_COMMIT | MEM_RESERVE, prot);
+        auto *alloc     = VirtualAlloc(addr, size, MEM_COMMIT | MEM_RESERVE, prot);
 
         if (!alloc)
         {
@@ -185,7 +223,7 @@ namespace lime
         SYSTEM_INFO si{};
         GetSystemInfo(&si);
 
-        auto granularity = si.dwAllocationGranularity;
+        const auto granularity = si.dwAllocationGranularity;
 
         auto min = where - std::numeric_limits<std::int32_t>::max();
         auto max = where + std::numeric_limits<std::int32_t>::max();
@@ -193,14 +231,15 @@ namespace lime
         min += (granularity - (min % granularity));
         max -= (max % granularity) + 1;
 
-        requirements.Alignment = 0;
-        requirements.HighestEndingAddress = reinterpret_cast<LPVOID>(max);
+        requirements.Alignment             = 0;
+        requirements.HighestEndingAddress  = reinterpret_cast<LPVOID>(max);
         requirements.LowestStartingAddress = min < 0 ? nullptr : reinterpret_cast<LPVOID>(min);
 
         param.Pointer = &requirements;
-        param.Type = MemExtendedParameterAddressRequirements;
+        param.Type    = MemExtendedParameterAddressRequirements;
 
-        static auto VirtualAlloc2 = []() {
+        static const auto VirtualAlloc2 = []()
+        {
             auto *kernel_base = LoadLibraryA("kernelbase.dll");
             return reinterpret_cast<decltype(::VirtualAlloc2) *>(GetProcAddress(kernel_base, "VirtualAlloc2"));
         }();
@@ -214,43 +253,5 @@ namespace lime
         }
 
         return impl::from(alloc, size, protection);
-    }
-
-    DWORD page::impl::translate(protection prot)
-    {
-        DWORD rtn{0};
-
-        if (prot & protection::read)
-        {
-            rtn = PAGE_READONLY;
-        }
-        if (prot & protection::write)
-        {
-            rtn = PAGE_READWRITE;
-        }
-        if (prot & protection::execute)
-        {
-            rtn = PAGE_EXECUTE_READWRITE;
-        }
-
-        return rtn;
-    }
-
-    std::shared_ptr<page> page::impl::from(LPVOID address, std::size_t size, protection protection)
-    {
-        auto *rtn = new page;
-
-        rtn->m_impl->start = reinterpret_cast<std::uintptr_t>(address);
-        rtn->m_impl->end = rtn->m_impl->start + size;
-
-        rtn->m_impl->original_prot = translate(protection);
-        rtn->m_impl->prot = protection;
-
-        auto deleter = [](page *page) {
-            VirtualFree(reinterpret_cast<LPVOID>(page->start()), page->size(), MEM_RELEASE);
-            delete page;
-        };
-
-        return {rtn, deleter};
     }
 } // namespace lime
