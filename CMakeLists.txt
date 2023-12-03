@@ -96,14 +96,15 @@ target_link_libraries(${PROJECT_NAME} PUBLIC cr::flagpp tl::expected boost_calla
 
 if (UNIX AND NOT MINGW)
   file(GLOB src "src/*.linux*.cpp")
-  target_sources(${PROJECT_NAME} PRIVATE ${src})
 endif()
 
 if (WIN32)
   file(GLOB src "src/*.win*.cpp")
-  target_sources(${PROJECT_NAME} PRIVATE ${src})
   target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
+  target_link_libraries(${PROJECT_NAME} PUBLIC imagehlp dbghelp)
 endif()
+
+target_sources(${PROJECT_NAME} PRIVATE ${src})
 
 # --------------------------------------------------------------------------------------------------------
 # Setup cross-platform entrypoint
