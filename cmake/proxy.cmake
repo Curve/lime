@@ -4,8 +4,11 @@ function(lime_mingw_generate_proxy TARGET DEFINITIONS)
     file(STRINGS ${DEFINITIONS} DEFS)
     set(MAP_EXPORTS "")
 
-    set(DEF_FILE "${CMAKE_BINARY_DIR}/lime-exports.def")
-    set(SRC_FILE "${CMAKE_BINARY_DIR}/lime-exports.cpp")
+    set(SOURCE_DIR "${CMAKE_BINARY_DIR}/lime")
+    file(MAKE_DIRECTORY ${SOURCE_DIR})
+
+    set(DEF_FILE "${SOURCE_DIR}/exports.def")
+    set(SRC_FILE "${SOURCE_DIR}/exports.hpp")
 
     file(REMOVE ${DEF_FILE})
     file(REMOVE ${SRC_FILE})
@@ -33,5 +36,6 @@ function(lime_mingw_generate_proxy TARGET DEFINITIONS)
     list(LENGTH DEFS EXPORT_COUNT)
     configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/proxy.cpp.in" ${SRC_FILE})
 
-    target_sources(${TARGET} PUBLIC ${SRC_FILE} ${DEF_FILE})
+    target_sources(${TARGET} PUBLIC ${DEF_FILE})
+    target_include_directories(${TARGET} PUBLIC ${SOURCE_DIR})
 endfunction()
