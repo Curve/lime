@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(lime LANGUAGES CXX VERSION 2.1)
+project(lime LANGUAGES CXX VERSION 2.2)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options
@@ -46,6 +46,12 @@ target_sources(${PROJECT_NAME} PRIVATE
   "src/instruction.cpp"
   "src/utils.signature.cpp"
 )
+
+# --------------------------------------------------------------------------------------------------------
+# Setup cmake exports
+# --------------------------------------------------------------------------------------------------------
+
+include("cmake/proxy.cmake")
 
 # --------------------------------------------------------------------------------------------------------
 # Setup required libraries

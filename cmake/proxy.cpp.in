@@ -1,0 +1,30 @@
+#include <windows.h>
+#include <string_view>
+
+#define LIME_MAP_EXPORTS(TRANSFORMER) @MAP_EXPORTS@
+
+namespace lime
+{
+    inline FARPROC proxy_originals[@EXPORT_COUNT@] = {};
+
+    template <typename T>
+    static inline void setup_proxy(const std::basic_string_view<T>& path)
+    {
+        auto *const original = LoadLibrary(path.c_str());
+
+        #define LIME_LOAD_ORIGINAL(index, name) proxy_originals[(index)-1] = GetProcAddress(original, name);
+        LIME_MAP_EXPORTS(LIME_LOAD_ORIGINAL)
+        #undef LIME_LOAD_ORIGINAL
+    }
+} // namespace lime
+
+#define LIME_EXPORT_FUNC(index, name)                                                                                  \
+    extern "C" __attribute__((naked, stdcall)) void LIME_PROXY_EXPORT_##index()                                        \
+    {                                                                                                                  \
+        asm volatile("jmp *%0" : : "r"(lime::proxy_originals[(index)-1]));                                             \
+    }
+
+LIME_MAP_EXPORTS(LIME_EXPORT_FUNC)
+
+#undef LIME_EXPORT_FUNC
+#undef LIME_MAP_EXPORTS
