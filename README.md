@@ -22,6 +22,7 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
 - Signature Scanner
   - Supports Traditional & IDA Signatures
 - Cross-Platform Entrypoint
+- Proxy-DLL Generation _(For MinGW)_
 
 > Lime follows the `RAII` paradigm, so you won't have to care about manually cleaning anything up (i.e. when allocating a page).
 
