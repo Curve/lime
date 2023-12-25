@@ -217,6 +217,9 @@ namespace lime
     std::shared_ptr<page> page::allocate<alloc_policy::nearby>(std::uintptr_t where, std::size_t size,
                                                                protection protection)
     {
+#ifdef LIME_DISABLE_ALLOC2
+        return nullptr;
+#else
         MEM_EXTENDED_PARAMETER param{};
         MEM_ADDRESS_REQUIREMENTS requirements{};
 
@@ -253,5 +256,6 @@ namespace lime
         }
 
         return impl::from(alloc, size, protection);
+#endif
     }
 } // namespace lime
