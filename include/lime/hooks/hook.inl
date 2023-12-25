@@ -2,9 +2,27 @@
 #include "hook.hpp"
 
 #include <cassert>
+#include <functional>
+
+#include <boost/callable_traits.hpp>
 
 namespace lime
 {
+    template <typename Hook, typename Signature>
+    consteval auto lambda_target()
+    {
+        using args_t   = boost::callable_traits::args_t<Signature>;
+        using return_t = boost::callable_traits::return_type_t<Signature>;
+
+        return std::apply(
+            []<typename... T>(T &&...)
+            {
+                using function_t = std::function<return_t(Hook, T...)>;
+                return std::type_identity<function_t>{};
+            },
+            args_t{});
+    }
+
     template <typename Signature>
     typename hook<Signature>::signature_t hook<Signature>::original() const
     {
@@ -13,7 +31,7 @@ namespace lime
 
     template <typename Signature>
     template <Address Source, Address Target>
-    typename hook<Signature>::rtn_t hook<Signature>::create(Source source, Target target)
+    hook<Signature>::template rtn_t<std::unique_ptr> hook<Signature>::create(Source source, Target target)
     {
         auto source_address = reinterpret_cast<std::uintptr_t>(source);
         auto target_address = reinterpret_cast<std::uintptr_t>(target);
@@ -31,7 +49,8 @@ namespace lime
 
     template <typename Signature>
     template <Address Source>
-    void hook<Signature>::create(Source source, lambda_target_t<hook *, Signature> &&target)
+    hook<Signature>::template rtn_t<std::add_pointer_t>
+    hook<Signature>::create(Source source, lambda_target_t<hook *, Signature> &&target)
     {
         using args_t = boost::callable_traits::args_t<Signature>;
         using rtn_t  = boost::callable_traits::return_type_t<Signature>;
@@ -49,9 +68,15 @@ namespace lime
             },
             args_t{});
 
-        auto _hook = create(source, +wrapper);
-        assert(_hook && "Failed to create hook");
+        auto result = create(source, static_cast<signature_t>(wrapper));
 
-        hook = _hook->release();
+        if (!result)
+        {
+            return tl::make_unexpected(result.error());
+        }
+
+        hook = result->release();
+
+        return hook;
     }
 } // namespace lime
