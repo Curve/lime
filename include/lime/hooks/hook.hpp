@@ -44,11 +44,19 @@ namespace lime
     template <typename T>
     concept Address = requires() { requires std::integral<T> || std::is_pointer_v<T>; };
 
-    template <typename Hook, typename Signature>
-    consteval auto lambda_target();
+    template <typename T>
+    concept PointerDecay = requires(T callable) {
+        { +callable };
+    };
 
-    template <typename Hook, typename Signature>
-    using lambda_target_t = typename decltype(lambda_target<Hook, Signature>())::type;
+    template <typename T, typename Signature>
+    consteval auto can_invoke();
+
+    template <typename T, typename Signature>
+    concept Lambda = requires(T callable) {
+        requires not(Address<T> or PointerDecay<T>);
+        requires can_invoke<T, Signature>();
+    };
 
     template <typename Signature>
     class hook : public hook_base
@@ -61,12 +69,12 @@ namespace lime
         signature_t original() const;
 
       public:
-        template <Address Source, Address Target>
-        [[nodiscard]] static rtn_t<std::unique_ptr> create(Source source, Target target);
+        [[nodiscard]] static rtn_t<std::unique_ptr> create(Address auto source, Address auto target);
 
       public:
-        template <Address Source>
-        static rtn_t<std::add_pointer_t> create(Source source, lambda_target_t<hook *, Signature> &&target);
+        template <typename Callable>
+            requires Lambda<Callable, Signature>
+        static rtn_t<std::add_pointer_t> create(Address auto source, Callable &&target);
     };
 } // namespace lime
 

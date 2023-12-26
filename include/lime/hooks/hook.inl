@@ -2,25 +2,19 @@
 #include "hook.hpp"
 
 #include <cassert>
-#include <functional>
-
 #include <boost/callable_traits.hpp>
 
 namespace lime
 {
-    template <typename Hook, typename Signature>
-    consteval auto lambda_target()
+    template <typename Lambda, typename Signature>
+    consteval auto can_invoke()
     {
-        using args_t   = boost::callable_traits::args_t<Signature>;
-        using return_t = boost::callable_traits::return_type_t<Signature>;
+        using args_t = boost::callable_traits::args_t<Signature>;
+        using rtn_t  = boost::callable_traits::return_type_t<Signature>;
 
-        return std::apply(
-            []<typename... T>(T &&...)
-            {
-                using function_t = std::function<return_t(Hook, T...)>;
-                return std::type_identity<function_t>{};
-            },
-            args_t{});
+        return std::apply([]<typename... T>(T &&...)
+                          { return std::is_same_v<std::invoke_result_t<Lambda, hook<Signature> *, T...>, rtn_t>; },
+                          args_t{});
     }
 
     template <typename Signature>
@@ -30,8 +24,7 @@ namespace lime
     }
 
     template <typename Signature>
-    template <Address Source, Address Target>
-    hook<Signature>::template rtn_t<std::unique_ptr> hook<Signature>::create(Source source, Target target)
+    hook<Signature>::rtn_t<std::unique_ptr> hook<Signature>::create(Address auto source, Address auto target)
     {
         auto source_address = reinterpret_cast<std::uintptr_t>(source);
         auto target_address = reinterpret_cast<std::uintptr_t>(target);
@@ -48,35 +41,35 @@ namespace lime
     }
 
     template <typename Signature>
-    template <Address Source>
-    hook<Signature>::template rtn_t<std::add_pointer_t>
-    hook<Signature>::create(Source source, lambda_target_t<hook *, Signature> &&target)
+    template <typename Callable>
+        requires Lambda<Callable, Signature>
+    hook<Signature>::rtn_t<std::add_pointer_t> hook<Signature>::create(Address auto source, Callable &&target)
     {
         using args_t = boost::callable_traits::args_t<Signature>;
         using rtn_t  = boost::callable_traits::return_type_t<Signature>;
 
-        static hook<Signature> *hook;
-        static auto lambda = std::move(target);
+        static hook<Signature> *rtn;
+        static auto lambda = std::forward<Callable>(target);
 
         static constexpr auto wrapper = std::apply(
             []<typename... T>(T &&...)
             {
                 return [](T... args) -> rtn_t
                 {
-                    return lambda(hook, std::forward<T>(args)...);
+                    return lambda(rtn, std::forward<T>(args)...);
                 };
             },
             args_t{});
 
-        auto result = create(source, static_cast<signature_t>(wrapper));
+        auto result = create(source, +wrapper);
 
         if (!result)
         {
             return tl::make_unexpected(result.error());
         }
 
-        hook = result->release();
+        rtn = result->release();
 
-        return hook;
+        return rtn;
     }
 } // namespace lime
