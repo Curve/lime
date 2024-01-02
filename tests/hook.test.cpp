@@ -26,6 +26,12 @@ suite webview_suite = []
     original_test.reset();
     expect(eq(test_fn(10), 10));
 
+    original_test = std::move(lime::make_hook(test_fn, test_hook).value());
+    expect(eq(test_fn(10), 15));
+
+    original_test.reset();
+    expect(eq(test_fn(10), 10));
+
     lime::hook<int(int)>::create(test_fn,
                                  [](auto *hook, int param) -> int
                                  {
@@ -33,6 +39,17 @@ suite webview_suite = []
                                      delete hook;
                                      return rtn;
                                  });
+
+    expect(eq(test_fn(10), 20));
+    expect(eq(test_fn(10), 10));
+
+    lime::make_hook(test_fn,
+                    [](auto *hook, int param) -> int
+                    {
+                        auto rtn = hook->original()(param + 10);
+                        delete hook;
+                        return rtn;
+                    });
 
     expect(eq(test_fn(10), 20));
     expect(eq(test_fn(10), 10));
