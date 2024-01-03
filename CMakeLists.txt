@@ -6,7 +6,7 @@ project(lime LANGUAGES CXX VERSION 2.3)
 # --------------------------------------------------------------------------------------------------------
 
 option(lime_tests               "Build tests"                                         OFF)
-option(lime_no_alloc2           "Disables VirtualAlloc2 (may fix issues with wine)"   OFF)
+option(lime_no_alloc2           "Disables VirtualAlloc2"                              OFF)
 option(lime_static_entrypoint   "Use platform independent entrypoint implementation"  OFF)
 
 # --------------------------------------------------------------------------------------------------------
