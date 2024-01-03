@@ -52,6 +52,9 @@ namespace lime
 
       public:
         [[nodiscard]] static std::optional<module> get(const std::string &name);
+        [[nodiscard]] static std::optional<module> load(const std::string &name);
+
+      public:
         [[nodiscard]] static std::optional<module> find(const std::string &name);
     };
 } // namespace lime

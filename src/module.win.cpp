@@ -11,6 +11,9 @@ namespace lime
 {
     struct module::impl
     {
+        using callback_t = std::function<bool(const std::string &)>;
+
+      public:
         HMODULE handle;
 
       public:
@@ -18,10 +21,11 @@ namespace lime
         std::string name;
 
       public:
-        static std::string lower(const std::string &string);
+        void iterate_symbols(const callback_t &) const;
 
       public:
-        void iterate_symbols(const std::function<bool(const std::string &)> &) const;
+        static std::optional<module> get(HMODULE module);
+        static std::string lower(const std::string &string);
     };
 
     module::module() :m_impl(std::make_unique<impl>()) {}
@@ -116,27 +120,14 @@ namespace lime
 
         for (auto i = 0u; (modules_size / sizeof(HMODULE)) > i; i++)
         {
-            CHAR name[MAX_PATH];
+            auto module = impl::get(modules[i]);
 
-            if (!GetModuleBaseNameA(GetCurrentProcess(), modules[i], name, MAX_PATH))
+            if (!module)
             {
                 continue;
             }
 
-            MODULEINFO info;
-
-            if (!GetModuleInformation(GetCurrentProcess(), modules[i], &info, sizeof(info)))
-            {
-                continue;
-            }
-
-            lime::module item;
-
-            item.m_impl->info   = info;
-            item.m_impl->handle = modules[i];
-            item.m_impl->name   = impl::lower(name);
-
-            rtn.emplace_back(std::move(item));
+            rtn.emplace_back(std::move(module.value()));
         }
 
         return rtn;
@@ -144,17 +135,26 @@ namespace lime
 
     std::optional<module> module::get(const std::string &name)
     {
-        auto all         = modules();
-        const auto lower = impl::lower(name);
+        auto *module = GetModuleHandleA(name.c_str());
 
-        auto it = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name() == lower; });
-
-        if (it == all.end())
+        if (!module)
         {
             return std::nullopt;
         }
 
-        return std::move(*it);
+        return impl::get(module);
+    }
+
+    std::optional<module> module::load(const std::string &name)
+    {
+        auto *module = LoadLibraryA(name.c_str());
+
+        if (!module)
+        {
+            return std::nullopt;
+        }
+
+        return impl::get(module);
     }
 
     std::optional<module> module::find(const std::string &name)
@@ -172,14 +172,6 @@ namespace lime
 
         return std::move(*it);
     }
-
-    std::string module::impl::lower(const std::string &string)
-    {
-        auto rtn{string};
-        std::transform(rtn.begin(), rtn.end(), rtn.begin(), [](unsigned char c) { return std::tolower(c); });
-
-        return rtn;
-    };
 
     void module::impl::iterate_symbols(const std::function<bool(const std::string &)> &callback) const
     {
@@ -219,4 +211,37 @@ namespace lime
 
         UnMapAndLoad(&image);
     }
+
+    std::optional<module> module::impl::get(HMODULE module)
+    {
+        CHAR name[MAX_PATH];
+
+        if (!GetModuleBaseNameA(GetCurrentProcess(), module, name, MAX_PATH))
+        {
+            return std::nullopt;
+        }
+
+        MODULEINFO info;
+
+        if (!GetModuleInformation(GetCurrentProcess(), module, &info, sizeof(info)))
+        {
+            return std::nullopt;
+        }
+
+        lime::module item;
+
+        item.m_impl->info   = info;
+        item.m_impl->handle = module;
+        item.m_impl->name   = lower(name);
+
+        return item;
+    }
+
+    std::string module::impl::lower(const std::string &string)
+    {
+        auto rtn{string};
+        std::transform(rtn.begin(), rtn.end(), rtn.begin(), [](unsigned char c) { return std::tolower(c); });
+
+        return rtn;
+    };
 } // namespace lime

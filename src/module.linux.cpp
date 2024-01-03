@@ -134,6 +134,16 @@ namespace lime
         return std::move(*module);
     }
 
+    std::optional<module> module::load(const std::string &name)
+    {
+        if (dlopen(name.c_str(), RTLD_NOW) == nullptr)
+        {
+            return std::nullopt;
+        }
+
+        return get(name);
+    }
+
     std::optional<module> module::find(const std::string &name)
     {
         auto all = modules();
