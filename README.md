@@ -34,13 +34,17 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
 set(lime_static_entrypoint ON)
 ```
 
+> Default is: `OFF`
+
 Use a platform-independent method for the entrypoint implementation.  
 You do not need to enable this to make use of the cross-platform entrypoint!
 
 ### VirtualAlloc2
 ```cmake
-set(lime_no_alloc2 OFF)
+set(lime_no_alloc2 ON)
 ```
+
+> Default is: `OFF`
 
 Can be used to disable the usage of `VirtualAlloc2`.  
 
