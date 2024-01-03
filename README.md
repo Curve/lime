@@ -2,21 +2,22 @@
     <img src="assets/lime.svg" width=400>
 </p>
 
-# 👋 Introduction
+## 👋 Introduction
 Lime is a *cross-platform* framework that is focused on game modding and tries to provide you with useful features for your journey.
 
 
-# 🗒️ Features
+## 🗒️ Features
 - Detours
   - x86/x86-64
-  - Supports lambdas as detours, similar to [rcmp](https://github.com/Smertig/rcmp)
+  - Lambda support
 - Instruction
-  - Allows to work with instructions (i.e. follow jumps/calls, ...)
+  > Allows to work with instructions (i.e. follow jumps/calls, ...)
 - Memory Pages
-  - Easy Allocation
+  > Easily allocate and work with memory pages
 - Module
   - Iterate Loaded Modules
   - Iterate Symbols
+  - Load Modules
 - Address
   - Read / Write Data
 - Signature Scanner
@@ -26,20 +27,24 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
 
 > Lime follows the `RAII` paradigm, so you won't have to care about manually cleaning anything up (i.e. when allocating a page).
 
-# ⚙️ Configuration
+## ⚙️ Configuration
 
-### Entrypoint
+### Static Entrypoint
 ```cmake
 set(lime_static_entrypoint ON)
 ```
-> Uses a platform-independent method for the entrypoint implementation.  
-> You do not need to enable this to make use of the cross-platform entrypoint!
 
-### Tests
+Use a platform-independent method for the entrypoint implementation.  
+You do not need to enable this to make use of the cross-platform entrypoint!
+
+### VirtualAlloc2
 ```cmake
-set(lime_tests ON)
+set(lime_no_alloc2 OFF)
 ```
-> If `ON`, tests will be built.  
+
+Can be used to disable the usage of `VirtualAlloc2`.  
+
+This should be used for compatibility with wine as it currently does not support the `LowestStartingAddress` requirement.
 
 # 📦 Installation
 - FetchContent
@@ -67,6 +72,8 @@ set(lime_tests ON)
   target_link_libraries(<YourLibrary> cr::lime)
   ```
 
-# 📖 Examples
+## 📖 Examples
 
-https://github.com/Curve/lime/blob/9ca0e477e6d5493f3b82ea79b51a2e2eb9f8b85f/tests/hook.test.cpp#L25-L29
+https://github.com/Curve/lime/blob/7de073bd4736900193f6af5c543a3cf62e6f1a73/tests/hook.test.cpp#L46-L52
+
+> For more examples see [tests](tests/)
