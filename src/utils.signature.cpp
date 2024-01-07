@@ -1,8 +1,11 @@
-#include "page.hpp"
 #include "utils/signature.hpp"
+
+#include "page.hpp"
 
 #include <cstring>
 #include <sstream>
+
+#include <algorithm>
 
 namespace lime
 {
@@ -203,8 +206,11 @@ namespace lime
 
         rtn.m_impl->required = required;
 
-        auto pattern = std::stringstream{ida_pattern};
+        auto pattern      = std::stringstream{ida_pattern};
+        const auto spaces = std::ranges::count_if(ida_pattern, [](char c) { return c == ' '; });
+
         std::string current;
+        current.reserve(spaces + 1);
 
         while (std::getline(pattern, current, ' '))
         {
