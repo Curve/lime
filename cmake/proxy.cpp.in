@@ -1,27 +1,36 @@
-#include <windows.h>
 #include <string_view>
+#include <lime/module.hpp>
 
 #define LIME_MAP_EXPORTS(TRANSFORMER) @MAP_EXPORTS@
 
-namespace lime
+namespace lime::proxy
 {
-    inline FARPROC proxy_originals[@EXPORT_COUNT@] = {};
-
-    template <typename T = char>
-    static inline void setup_proxy(std::basic_string_view<T> path)
+    namespace detail
     {
-        auto *const original = LoadLibrary(path.data());
+        inline std::uintptr_t originals[@EXPORT_COUNT@] = {};
+    } // namespace detail
 
-        #define LIME_LOAD_ORIGINAL(index, name) proxy_originals[(index)-1] = GetProcAddress(original, name);
+    inline bool setup(std::string_view path)
+    {
+        auto original = lime::module::load(path);
+
+        if (!original)
+        {
+            return false;
+        }
+
+        #define LIME_LOAD_ORIGINAL(index, name) detail::originals[(index)-1] = original->symbol(name);
         LIME_MAP_EXPORTS(LIME_LOAD_ORIGINAL)
         #undef LIME_LOAD_ORIGINAL
+        
+        return true;
     }
-} // namespace lime
+} // namespace lime::proxy
 
 #define LIME_EXPORT_FUNC(index, name)                                                                                  \
     extern "C" __attribute__((naked, stdcall)) void LIME_PROXY_EXPORT_##index()                                        \
     {                                                                                                                  \
-        asm volatile("jmp *%0" : : "r"(lime::proxy_originals[(index)-1]));                                             \
+        asm volatile("jmp *%0" : : "r"(lime::proxy::detail::originals[(index)-1]));                                             \
     }
 
 LIME_MAP_EXPORTS(LIME_EXPORT_FUNC)

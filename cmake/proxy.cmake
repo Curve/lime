@@ -1,6 +1,11 @@
 function(lime_mingw_generate_proxy TARGET DEFINITIONS)
     message(STATUS "[lime] Generating Proxy for \"${TARGET}\"")
 
+    if (NOT WIN32)
+        message(WARNING "[lime] Proxy-Generation is only supported on windows!")
+        message(WARNING "[lime] You might be interested in ld preload for unix")
+    endif()
+
     file(STRINGS ${DEFINITIONS} DEFS)
     set(MAP_EXPORTS "")
 
