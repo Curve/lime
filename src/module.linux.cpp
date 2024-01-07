@@ -50,13 +50,13 @@ namespace lime
     {
         std::vector<lime::symbol> rtn;
 
-        auto fn = [&](std::string_view name)
+        auto fn = [&](auto name)
         {
             auto sym = symbol(name);
             auto str = std::string{name};
 
             rtn.emplace_back(lime::symbol{
-                .name    = str,
+                .name    = std::move(str),
                 .address = sym,
             });
 
@@ -78,7 +78,7 @@ namespace lime
     {
         std::uintptr_t rtn{0};
 
-        auto fn = [&](std::string_view item)
+        auto fn = [&](auto item)
         {
             if (item.find(name) == std::string_view::npos)
             {
@@ -124,6 +124,7 @@ namespace lime
         };
 
         dl_iterate_phdr(callback, &rtn);
+
         return rtn;
     }
 
@@ -154,14 +155,18 @@ namespace lime
     {
         auto all = modules();
 
-        constexpr auto npos = std::string::npos;
-        auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name().find(name) != npos; });
+        auto fn = [&](const auto &item)
+        {
+            return item.name().find(name) != std::string_view::npos;
+        };
 
-        if (module == all.end())
+        auto rtn = std::ranges::find_if(all, fn);
+
+        if (rtn == all.end())
         {
             return std::nullopt;
         }
 
-        return std::move(*module);
+        return std::move(*rtn);
     }
 } // namespace lime
