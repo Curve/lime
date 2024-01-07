@@ -48,7 +48,7 @@ jobs:
           && cmake --build . --config Debug
 
       - name: Run Tests
-        run: "./build/tests/lime-tests.exe"
+        run: "./build/tests/Debug/lime-tests.exe"
 
   test-windows:
     runs-on: windows-latest
@@ -68,4 +68,4 @@ jobs:
           && cmake --build . --config Debug
 
       - name: Run Tests
-        run: "./build/tests/lime-tests.exe"
+        run: "./build/tests/Debug/lime-tests.exe"
