@@ -11,21 +11,21 @@ namespace lime
 {
     struct module::impl
     {
-        using callback_t = std::function<bool(const std::string &)>;
+        using callback_t = std::function<bool(std::string_view)>;
+
+      public:
+        std::string name;
 
       public:
         HMODULE handle;
-
-      public:
         MODULEINFO info;
-        std::string name;
 
       public:
         void iterate_symbols(const callback_t &) const;
 
       public:
         static std::optional<module> get(HMODULE module);
-        static std::string lower(const std::string &string);
+        static std::string lower(std::string_view string);
     };
 
     module::module() :m_impl(std::make_unique<impl>()) {}
@@ -39,7 +39,7 @@ namespace lime
 
     module::module(module &&other) noexcept :m_impl(std::move(other.m_impl)) {}
 
-    std::string module::name() const
+    std::string_view module::name() const
     {
         return m_impl->name;
     }
@@ -63,10 +63,15 @@ namespace lime
     {
         std::vector<lime::symbol> rtn;
 
-        auto fn = [&](std::string name)
+        auto fn = [&](std::string_view name)
         {
             auto sym = symbol(name);
-            rtn.emplace_back(lime::symbol{.name = std::move(name), .address = sym});
+            auto str = std::string{name};
+
+            rtn.emplace_back(lime::symbol{
+                .name    = str,
+                .address = sym,
+            });
 
             return false;
         };
@@ -76,23 +81,24 @@ namespace lime
         return rtn;
     }
 
-    std::uintptr_t module::symbol(const std::string &name) const
+    std::uintptr_t module::symbol(std::string_view name) const
     {
-        return reinterpret_cast<std::uintptr_t>(GetProcAddress(m_impl->handle, name.c_str()));
+        return reinterpret_cast<std::uintptr_t>(GetProcAddress(m_impl->handle, name.data()));
     }
 
-    std::optional<std::uintptr_t> module::find_symbol(const std::string &name) const
+    std::optional<std::uintptr_t> module::find_symbol(std::string_view name) const
     {
         std::uintptr_t rtn{0};
 
-        auto fn = [&](const std::string &item)
+        auto fn = [&](std::string_view item)
         {
-            if (item.find(name) == std::string::npos)
+            if (item.find(name) == std::string_view::npos)
             {
                 return false;
             }
 
             rtn = symbol(item);
+
             return true;
         };
 
@@ -133,9 +139,9 @@ namespace lime
         return rtn;
     }
 
-    std::optional<module> module::get(const std::string &name)
+    std::optional<module> module::get(std::string_view name)
     {
-        auto *module = GetModuleHandleA(name.c_str());
+        auto *module = GetModuleHandleA(name.data());
 
         if (!module)
         {
@@ -145,9 +151,9 @@ namespace lime
         return impl::get(module);
     }
 
-    std::optional<module> module::load(const std::string &name)
+    std::optional<module> module::load(std::string_view name)
     {
-        auto *module = LoadLibraryA(name.c_str());
+        auto *module = LoadLibraryA(name.data());
 
         if (!module)
         {
@@ -157,7 +163,7 @@ namespace lime
         return impl::get(module);
     }
 
-    std::optional<module> module::find(const std::string &name)
+    std::optional<module> module::find(std::string_view name)
     {
         static constexpr auto npos = std::string::npos;
         const auto lower           = impl::lower(name);
@@ -173,7 +179,7 @@ namespace lime
         return std::move(*it);
     }
 
-    void module::impl::iterate_symbols(const std::function<bool(const std::string &)> &callback) const
+    void module::impl::iterate_symbols(const module::impl::callback_t &callback) const
     {
         CHAR path[MAX_PATH];
         GetModuleFileNameA(handle, path, MAX_PATH);
@@ -203,10 +209,12 @@ namespace lime
             const auto *name =
                 reinterpret_cast<char *>(ImageRvaToVa(image.FileHeader, image.MappedAddress, rvas[i], nullptr));
 
-            if (callback(name))
+            if (!callback(name))
             {
-                break;
+                continue;
             }
+
+            break;
         }
 
         UnMapAndLoad(&image);
@@ -237,9 +245,9 @@ namespace lime
         return item;
     }
 
-    std::string module::impl::lower(const std::string &string)
+    std::string module::impl::lower(std::string_view string)
     {
-        auto rtn{string};
+        std::string rtn{string};
         std::transform(rtn.begin(), rtn.end(), rtn.begin(), [](unsigned char c) { return std::tolower(c); });
 
         return rtn;

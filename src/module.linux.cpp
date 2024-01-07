@@ -19,7 +19,7 @@ namespace lime
 
     module::module(module &&other) noexcept :m_impl(std::move(other.m_impl)) {}
 
-    std::string module::name() const
+    std::string_view module::name() const
     {
         return m_impl->info.dlpi_name;
     }
@@ -50,10 +50,15 @@ namespace lime
     {
         std::vector<lime::symbol> rtn;
 
-        auto fn = [&](std::string name)
+        auto fn = [&](std::string_view name)
         {
             auto sym = symbol(name);
-            rtn.emplace_back(lime::symbol{.name = std::move(name), .address = sym});
+            auto str = std::string{name};
+
+            rtn.emplace_back(lime::symbol{
+                .name    = str,
+                .address = sym,
+            });
 
             return false;
         };
@@ -63,24 +68,25 @@ namespace lime
         return rtn;
     }
 
-    std::uintptr_t module::symbol(const std::string &name) const
+    std::uintptr_t module::symbol(std::string_view name) const
     {
-        auto *addr = dlsym(m_impl->handle, name.c_str());
+        auto *addr = dlsym(m_impl->handle, name.data());
         return reinterpret_cast<std::uintptr_t>(addr);
     }
 
-    std::optional<std::uintptr_t> module::find_symbol(const std::string &name) const
+    std::optional<std::uintptr_t> module::find_symbol(std::string_view name) const
     {
         std::uintptr_t rtn{0};
 
-        auto fn = [&](const std::string &item)
+        auto fn = [&](std::string_view item)
         {
-            if (item.find(name) == std::string::npos)
+            if (item.find(name) == std::string_view::npos)
             {
                 return false;
             }
 
             rtn = symbol(item);
+
             return true;
         };
 
@@ -110,7 +116,7 @@ namespace lime
             module current;
 
             current.m_impl->info   = *info;
-            current.m_impl->handle = dlopen(current.name().c_str(), RTLD_NOLOAD | RTLD_LAZY);
+            current.m_impl->handle = dlopen(current.name().data(), RTLD_NOLOAD | RTLD_LAZY);
 
             res.emplace_back(std::move(current));
 
@@ -121,7 +127,7 @@ namespace lime
         return rtn;
     }
 
-    std::optional<module> module::get(const std::string &name)
+    std::optional<module> module::get(std::string_view name)
     {
         auto all    = modules();
         auto module = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name() == name; });
@@ -134,9 +140,9 @@ namespace lime
         return std::move(*module);
     }
 
-    std::optional<module> module::load(const std::string &name)
+    std::optional<module> module::load(std::string_view name)
     {
-        if (dlopen(name.c_str(), RTLD_NOW) == nullptr)
+        if (dlopen(name.data(), RTLD_NOW) == nullptr)
         {
             return std::nullopt;
         }
@@ -144,7 +150,7 @@ namespace lime
         return get(name);
     }
 
-    std::optional<module> module::find(const std::string &name)
+    std::optional<module> module::find(std::string_view name)
     {
         auto all = modules();
 

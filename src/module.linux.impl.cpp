@@ -53,7 +53,7 @@ namespace lime
         return last_symbol;
     }
 
-    void module::impl::iterate_symbols(const std::function<bool(const std::string &)> &callback) const
+    void module::impl::iterate_symbols(const std::function<bool(std::string_view)> &callback) const
     {
         for (auto i = 0u; info.dlpi_phnum > i; i++)
         {

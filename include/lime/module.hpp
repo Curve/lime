@@ -1,9 +1,11 @@
 #pragma once
-#include <string>
-#include <memory>
+
 #include <vector>
+#include <memory>
+
 #include <cstdint>
 #include <optional>
+#include <string_view>
 
 namespace lime
 {
@@ -31,7 +33,7 @@ namespace lime
         module(module &&) noexcept;
 
       public:
-        [[nodiscard]] std::string name() const;
+        [[nodiscard]] std::string_view name() const;
 
       public:
         [[nodiscard]] std::size_t size() const;
@@ -44,17 +46,17 @@ namespace lime
         [[nodiscard]] std::vector<lime::symbol> symbols() const;
 
       public:
-        [[nodiscard]] std::uintptr_t symbol(const std::string &name) const;
-        [[nodiscard]] std::optional<std::uintptr_t> find_symbol(const std::string &name) const;
+        [[nodiscard]] std::uintptr_t symbol(std::string_view name) const;
+        [[nodiscard]] std::optional<std::uintptr_t> find_symbol(std::string_view name) const;
 
       public:
         [[nodiscard]] static std::vector<module> modules();
 
       public:
-        [[nodiscard]] static std::optional<module> get(const std::string &name);
-        [[nodiscard]] static std::optional<module> load(const std::string &name);
+        [[nodiscard]] static std::optional<module> get(std::string_view name);
+        [[nodiscard]] static std::optional<module> load(std::string_view name);
 
       public:
-        [[nodiscard]] static std::optional<module> find(const std::string &name);
+        [[nodiscard]] static std::optional<module> find(std::string_view name);
     };
 } // namespace lime
