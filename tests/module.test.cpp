@@ -5,12 +5,34 @@
 using namespace boost::ut;
 using namespace boost::ut::literals;
 
+namespace fs = std::filesystem;
+
+std::optional<fs::path> find_library()
+{
+    for (const auto &entry : fs::recursive_directory_iterator{fs::current_path()})
+    {
+        const auto &path = entry.path();
+        const auto name  = path.filename().string();
+
+        if (!name.starts_with("lime-shared-lib"))
+        {
+            continue;
+        }
+
+        return path;
+    }
+
+    return std::nullopt;
+}
+
 suite<"Module"> module_suite = []
 {
     expect(eq(lime::module::find("lime-shared-lib").has_value(), false));
 
-    const auto path = std::filesystem::current_path() / "lime-shared-lib";
-    auto loaded     = lime::module::load(path.string());
+    auto path = find_library();
+    expect(eq(path.has_value(), true));
+
+    auto loaded = lime::module::load(path->string());
     expect(eq(loaded.has_value(), true));
 
     auto test = lime::module::find("lime-shared-lib");
