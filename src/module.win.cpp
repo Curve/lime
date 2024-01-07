@@ -1,6 +1,7 @@
 #include "module.hpp"
 
 #include <windows.h>
+
 #include <imagehlp.h>
 #include <psapi.h>
 
@@ -63,13 +64,13 @@ namespace lime
     {
         std::vector<lime::symbol> rtn;
 
-        auto fn = [&](std::string_view name)
+        auto fn = [&](auto name)
         {
             auto sym = symbol(name);
             auto str = std::string{name};
 
             rtn.emplace_back(lime::symbol{
-                .name    = str,
+                .name    = std::move(str),
                 .address = sym,
             });
 
@@ -90,7 +91,7 @@ namespace lime
     {
         std::uintptr_t rtn{0};
 
-        auto fn = [&](std::string_view item)
+        auto fn = [&](auto item)
         {
             if (item.find(name) == std::string_view::npos)
             {
@@ -116,17 +117,25 @@ namespace lime
     {
         std::vector<module> rtn;
 
-        DWORD modules_size{};
-        HMODULE modules[1024];
+        DWORD size{};
+        std::vector<HMODULE> modules(1);
 
-        if (!EnumProcessModules(GetCurrentProcess(), modules, sizeof(modules), &modules_size))
+        if (!EnumProcessModules(GetCurrentProcess(), modules.data(), modules.size(), &size))
         {
             return rtn;
         }
 
-        for (auto i = 0u; (modules_size / sizeof(HMODULE)) > i; i++)
+        const auto required = size / sizeof(HMODULE);
+        modules.resize(required);
+
+        if (!EnumProcessModules(GetCurrentProcess(), modules.data(), modules.size(), &size))
         {
-            auto module = impl::get(modules[i]);
+            return rtn;
+        }
+
+        for (const auto &handle : modules)
+        {
+            auto module = impl::get(handle);
 
             if (!module)
             {
@@ -165,23 +174,27 @@ namespace lime
 
     std::optional<module> module::find(std::string_view name)
     {
-        static constexpr auto npos = std::string::npos;
-        const auto lower           = impl::lower(name);
-        auto all                   = modules();
+        const auto lower = impl::lower(name);
+        auto all         = modules();
 
-        auto it = std::find_if(all.begin(), all.end(), [&](auto &item) { return item.name().find(lower) != npos; });
+        auto fn = [&](const auto &item)
+        {
+            return item.name().find(lower) != std::string_view::npos;
+        };
 
-        if (it == all.end())
+        auto rtn = std::ranges::find_if(all, fn);
+
+        if (rtn == all.end())
         {
             return std::nullopt;
         }
 
-        return std::move(*it);
+        return std::move(*rtn);
     }
 
     void module::impl::iterate_symbols(const module::impl::callback_t &callback) const
     {
-        CHAR path[MAX_PATH];
+        char path[MAX_PATH];
         GetModuleFileNameA(handle, path, MAX_PATH);
 
         _LOADED_IMAGE image;
@@ -201,13 +214,13 @@ namespace lime
             return;
         }
 
-        const auto *rvas = reinterpret_cast<DWORD *>(
+        const auto *names = reinterpret_cast<std::uintptr_t *>(
             ImageRvaToVa(image.FileHeader, image.MappedAddress, export_directory->AddressOfNames, nullptr));
 
-        for (size_t i = 0; export_directory->NumberOfNames > i; i++)
+        for (auto i = 0u; export_directory->NumberOfNames > i; i++)
         {
-            const auto *name =
-                reinterpret_cast<char *>(ImageRvaToVa(image.FileHeader, image.MappedAddress, rvas[i], nullptr));
+            const auto *address = ImageRvaToVa(image.FileHeader, image.MappedAddress, names[i], nullptr);
+            const auto *name    = reinterpret_cast<const char *>(address);
 
             if (!callback(name))
             {
@@ -222,7 +235,7 @@ namespace lime
 
     std::optional<module> module::impl::get(HMODULE module)
     {
-        CHAR name[MAX_PATH];
+        char name[MAX_PATH];
 
         if (!GetModuleBaseNameA(GetCurrentProcess(), module, name, MAX_PATH))
         {
