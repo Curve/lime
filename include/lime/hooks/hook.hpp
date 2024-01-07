@@ -8,7 +8,7 @@
 
 namespace lime
 {
-    namespace concepts
+    namespace detail
     {
         template <typename T>
         concept address = requires() { requires std::integral<T> or std::is_pointer_v<T>; };
@@ -41,7 +41,7 @@ namespace lime
 
         template <typename T, typename Signature>
         concept invocable_lambda_like = requires() { requires lambda_like<T> and can_invoke<T, Signature>(); };
-    } // namespace concepts
+    } // namespace detail
 
     enum class hook_error
     {
@@ -87,20 +87,20 @@ namespace lime
         signature_t original() const;
 
       public:
-        template <concepts::address Source, concepts::address Target>
+        template <detail::address Source, detail::address Target>
         [[nodiscard]] static rtn_t<std::unique_ptr> create(Source source, Target target);
 
       public:
         template <typename Callable>
-        requires concepts::invocable_lambda_like<Callable, Signature>
-        static rtn_t<std::add_pointer_t> create(concepts::address auto source, Callable &&target);
+        requires detail::invocable_lambda_like<Callable, Signature>
+        static rtn_t<std::add_pointer_t> create(detail::address auto source, Callable &&target);
     };
 
-    template <concepts::function_pointer Signature, typename Callable>
+    template <detail::function_pointer Signature, typename Callable>
     auto make_hook(Signature source, Callable &&target);
 
     template <typename Signature, typename Callable>
-    auto make_hook(concepts::address auto source, Callable &&target);
+    auto make_hook(detail::address auto source, Callable &&target);
 } // namespace lime
 
 #include "hook.inl"

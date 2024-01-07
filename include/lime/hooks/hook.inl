@@ -1,4 +1,5 @@
 #pragma once
+
 #include "hook.hpp"
 
 #include <cassert>
@@ -7,7 +8,7 @@
 namespace lime
 {
     template <typename Lambda, typename Signature>
-    consteval auto concepts::can_invoke()
+    consteval auto detail::can_invoke()
     {
         using args_t = boost::callable_traits::args_t<Signature>;
         using rtn_t  = boost::callable_traits::return_type_t<Signature>;
@@ -34,7 +35,7 @@ namespace lime
     }
 
     template <typename Signature>
-    template <concepts::address Source, concepts::address Target>
+    template <detail::address Source, detail::address Target>
     hook<Signature>::rtn_t<std::unique_ptr> hook<Signature>::create(Source source, Target target)
     {
         auto source_address = reinterpret_cast<std::uintptr_t>(source);
@@ -53,8 +54,8 @@ namespace lime
 
     template <typename Signature>
     template <typename Callable>
-    requires concepts::invocable_lambda_like<Callable, Signature>
-    hook<Signature>::rtn_t<std::add_pointer_t> hook<Signature>::create(concepts::address auto source, Callable &&target)
+    requires detail::invocable_lambda_like<Callable, Signature>
+    hook<Signature>::rtn_t<std::add_pointer_t> hook<Signature>::create(detail::address auto source, Callable &&target)
     {
         using args_t = boost::callable_traits::args_t<Signature>;
         using rtn_t  = boost::callable_traits::return_type_t<Signature>;
@@ -84,14 +85,14 @@ namespace lime
         return rtn;
     }
 
-    template <concepts::function_pointer Signature, typename Callable>
+    template <detail::function_pointer Signature, typename Callable>
     auto make_hook(Signature source, Callable &&target)
     {
         return hook<std::remove_pointer_t<Signature>>::create(source, std::forward<Callable>(target));
     }
 
     template <typename Signature, typename Callable>
-    auto make_hook(concepts::address auto source, Callable &&target)
+    auto make_hook(detail::address auto source, Callable &&target)
     {
         return hook<Signature>::create(source, std::forward<Callable>(target));
     }
