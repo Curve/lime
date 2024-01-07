@@ -117,18 +117,19 @@ namespace lime
     {
         std::vector<module> rtn;
 
-        DWORD size{};
-        std::vector<HMODULE> modules(1);
+        std::vector<HMODULE> modules{32};
+        const auto length = modules.size() * sizeof(HMODULE);
 
-        if (!EnumProcessModules(GetCurrentProcess(), modules.data(), modules.size(), &size))
+        DWORD required{};
+
+        if (!EnumProcessModules(GetCurrentProcess(), modules.data(), length, &required))
         {
             return rtn;
         }
 
-        const auto required = size / sizeof(HMODULE);
-        modules.resize(required);
+        modules.resize(required / sizeof(HMODULE));
 
-        if (!EnumProcessModules(GetCurrentProcess(), modules.data(), modules.size(), &size))
+        if (!EnumProcessModules(GetCurrentProcess(), modules.data(), required, &required))
         {
             return rtn;
         }
