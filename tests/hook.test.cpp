@@ -16,7 +16,7 @@ int test_hook(int param)
     return original_test->original()(param + 5);
 }
 
-suite webview_suite = []
+suite<"Hooks"> hook_suite = []
 {
     expect(eq(test_fn(10), 10));
 
