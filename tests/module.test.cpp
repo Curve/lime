@@ -11,6 +11,11 @@ std::optional<fs::path> find_library()
 {
     for (const auto &entry : fs::recursive_directory_iterator{fs::current_path()})
     {
+        if (!entry.is_regular_file())
+        {
+            continue;
+        }
+
         const auto &path = entry.path();
         const auto name  = path.filename().string();
 
