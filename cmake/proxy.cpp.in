@@ -1,4 +1,3 @@
-#include <string_view>
 #include <lime/module.hpp>
 
 #define LIME_MAP_EXPORTS(TRANSFORMER) @MAP_EXPORTS@
@@ -30,7 +29,7 @@ namespace lime::proxy
 #define LIME_EXPORT_FUNC(index, name)                                                                                  \
     extern "C" __attribute__((naked, stdcall)) void LIME_PROXY_EXPORT_##index()                                        \
     {                                                                                                                  \
-        asm volatile("jmp *%0" : : "r"(lime::proxy::detail::originals[(index)-1]));                                             \
+        asm volatile("jmp *%0" : : "r"(lime::proxy::detail::originals[(index)-1]));                                    \
     }
 
 LIME_MAP_EXPORTS(LIME_EXPORT_FUNC)
