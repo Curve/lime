@@ -43,6 +43,11 @@ suite<"Module"> module_suite = []
     auto test = lime::module::find("lime-shared-lib");
     expect(eq(test.has_value(), true));
 
+#if defined(WIN32) || defined(_WIN32)
+    auto case_test = lime::module::find("LIME-SHARED-LIB");
+    expect(eq(case_test.has_value(), true));
+#endif
+
     expect(test->name().find("lime-shared") != std::string_view::npos);
 
     expect(test->symbols().size() >= 1);
