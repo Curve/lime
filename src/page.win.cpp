@@ -157,7 +157,7 @@ namespace lime
         while (VirtualQuery(address, &info, sizeof(info)))
         {
             auto base = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
-            rtn.emplace_back(std::move(unsafe(base)));
+            rtn.emplace_back(unsafe(base));
 
             address = reinterpret_cast<void *>(base + info.RegionSize);
         }
