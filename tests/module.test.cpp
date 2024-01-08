@@ -1,43 +1,39 @@
 #include <filesystem>
-#include <lime/module.hpp>
 #include <boost/ut.hpp>
+#include <lime/module.hpp>
+
+#if defined(WIN32) || defined(_WIN32)
+#include <windows.h>
+#endif
 
 using namespace boost::ut;
 using namespace boost::ut::literals;
 
 namespace fs = std::filesystem;
 
-std::optional<fs::path> find_library()
+fs::path find_library()
 {
-    for (const auto &entry : fs::recursive_directory_iterator{fs::current_path()})
-    {
-        if (!entry.is_regular_file())
-        {
-            continue;
-        }
+#if defined(WIN32) || defined(_WIN32)
+    char path[MAX_PATH];
+    GetModuleFileNameA(nullptr, path, sizeof(path));
 
-        const auto &path = entry.path();
-        const auto name  = path.filename().string();
-
-        if (!name.starts_with("lime-shared-lib"))
-        {
-            continue;
-        }
-
-        return path;
-    }
-
-    return std::nullopt;
+    const auto self = fs::path{path}.parent_path();
+    return self / "lime-shared-lib";
+#else
+    const auto self = fs::canonical("/proc/self/exe").parent_path();
+    return self / "lime-shared-lib";
+#endif
 }
 
 suite<"Module"> module_suite = []
 {
     expect(eq(lime::module::find("lime-shared-lib").has_value(), false));
 
-    auto path = find_library();
-    expect(eq(path.has_value(), true));
+    const auto path = find_library();
 
-    auto loaded = lime::module::load(path->string());
+    std::cout << path.string() << std::endl;
+
+    auto loaded = lime::module::load(path.string());
     expect(eq(loaded.has_value(), true));
 
     auto test = lime::module::find("lime-shared-lib");
