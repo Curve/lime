@@ -1,30 +1,34 @@
+#include <filesystem>
 #include <boost/ut.hpp>
 #include <lime/module.hpp>
 
+#if defined(WIN32) || defined(_WIN32)
+#include <windows.h>
+#endif
+
 using namespace boost::ut;
 using namespace boost::ut::literals;
-
-#ifdef __linux__
-#include <filesystem>
 
 namespace fs = std::filesystem;
 
 fs::path find_library()
 {
+#if defined(WIN32) || defined(_WIN32)
+    char path[MAX_PATH];
+    GetModuleFileNameA(nullptr, path, sizeof(path));
+
+    return fs::path{path}.parent_path() / "lime-shared-lib.dll";
+#else
     const auto self = fs::canonical("/proc/self/exe").parent_path();
-    return self / "lime-shared-lib";
-}
+    return self / "lime-shared-lib.so";
 #endif
+}
 
 suite<"Module"> module_suite = []
 {
     expect(eq(lime::module::find("lime-shared-lib").has_value(), false));
 
-#if defined(WIN32) || defined(_WIN32)
-    const auto *path = "lime-shared-lib";
-#else
     const auto path = find_library().string();
-#endif
 
     auto loaded = lime::module::load(path);
     expect(eq(loaded.has_value(), true));

@@ -8,7 +8,7 @@ project(lime-shared-lib LANGUAGES CXX)
 add_library(${PROJECT_NAME} SHARED)
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES SUFFIX "" PREFIX "")
+set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
 set_target_properties(${PROJECT_NAME} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
 set_target_properties(${PROJECT_NAME} PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON CXX_VISIBILITY_PRESET default)
