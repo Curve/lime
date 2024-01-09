@@ -6,6 +6,7 @@
 
 #include <array>
 #include <limits>
+#include <ranges>
 #include <fstream>
 #include <algorithm>
 #include <filesystem>
@@ -171,10 +172,10 @@ namespace lime
     {
         auto pages = page::pages();
 
-        auto it = std::find_if(pages.begin(), pages.end(),
-                               [&](const auto &page) { return address >= page.start() && address <= page.end(); });
+        auto it = std::ranges::find_if(pages | std::ranges::views::reverse, [&](const auto &page)
+                                       { return address >= page.start() && address <= page.end(); });
 
-        if (it == pages.end())
+        if (it == pages.rend())
         {
             return std::nullopt;
         }
