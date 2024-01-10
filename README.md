@@ -3,7 +3,7 @@
 </p>
 
 ## 👋 Introduction
-Lime is a *cross-platform* framework that is focused on game modding and tries to provide you with useful features for your journey.
+Lime is a *cross-platform* library that is focused on game modding and tries to provide you with useful features for your journey.
 
 
 ## 🗒️ Features
