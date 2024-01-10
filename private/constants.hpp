@@ -12,6 +12,7 @@ namespace lime
     };
 
     static constexpr inline architecture arch = (sizeof(std::uintptr_t)) == 8 ? architecture::x64 : architecture::x86;
+    static constexpr inline auto max_instruction_size = 0x15;
 
     enum size : std::size_t
     {
