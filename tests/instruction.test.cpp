@@ -55,7 +55,7 @@ suite<"Instruction"> instruction_suite = []
     auto next = follow->next();
 
     expect(eq(next.has_value(), true));
-    expect(gt(next->addr(), instruction->addr()));
+    expect(gt(next->addr(), follow->addr()));
 
     auto prev = next->prev();
 
