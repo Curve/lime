@@ -25,7 +25,7 @@ Lime is a *cross-platform* framework that is focused on game modding and tries t
 - Cross-Platform Entrypoint
 - Proxy-DLL Generation _(For MinGW)_
 
-> Lime follows the `RAII` paradigm, so you won't have to care about manually cleaning anything up (i.e. when allocating a page).
+> Lime follows `RAII` so you won't have to care about manually cleaning anything up (i.e. when allocating a page).
 
 ## ⚙️ Configuration
 
@@ -51,29 +51,24 @@ Can be used to disable the usage of `VirtualAlloc2`.
 This should be used for compatibility with wine as it currently does not support the `LowestStartingAddress` requirement.
 
 # 📦 Installation
-- FetchContent
+
+* Using [CPM](https://github.com/cpm-cmake/CPM.cmake)
+  ```cmake
+  CPMFindPackage(
+    NAME           lime
+    VERSION        3.0
+    GIT_REPOSITORY "https://github.com/Curve/lime"
+  )
+  ```
+
+* Using FetchContent
   ```cmake
   include(FetchContent)
 
-  FetchContent_Declare(
-        lime
-        GIT_REPOSITORY "https://github.com/Curve/lime"
-  )
-
+  FetchContent_Declare(lime GIT_REPOSITORY "https://github.com/Curve/lime" GIT_TAG v3.0)
   FetchContent_MakeAvailable(lime)
 
-  target_link_libraries(<YourLibrary> cr::lime)
-  ```
-
-- Git Submodule
-  ```bash
-  git submodule add "https://github.com/Curve/lime"
-  ```
-  ```cmake
-  # CMakeLists.txt
-  add_subdirectory("<path_to_lime>")
-
-  target_link_libraries(<YourLibrary> cr::lime)
+  target_link_libraries(<target> cr::lime)
   ```
 
 ## 📖 Examples
