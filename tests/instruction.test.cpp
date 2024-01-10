@@ -47,6 +47,15 @@ suite<"Instruction"> instruction_suite = []
     expect(eq(call->mnemonic(), MNEMONIC_CALL));
     expect(gt(call->addr(), instruction->addr()));
 
+    /*
+     * We depend on compiler generated assembly here which isn't always what we'd expect it to be.
+     * This test would probably be better suited on a small shell-code (TODO).
+     *
+     * As clang and gcc both compile `func1` and `func2` into roughly what we'd expect while MSVC does not the following
+     * asserts are only enabled for Windows under clang-cl
+     */
+
+#if !defined(_MSC_VER) || defined(__clang__)
     auto follow = call->follow();
 
     expect(eq(follow.has_value(), true));
@@ -62,4 +71,5 @@ suite<"Instruction"> instruction_suite = []
     expect(eq(prev.has_value(), true));
     expect(eq(prev->addr(), follow->addr()));
     expect(eq(prev->mnemonic(), follow->mnemonic()));
+#endif
 };
