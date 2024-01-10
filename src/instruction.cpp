@@ -1,4 +1,5 @@
 #include "instruction.hpp"
+#include "constants.hpp"
 #include "disasm.hpp"
 #include "page.hpp"
 
@@ -64,7 +65,24 @@ namespace lime
 
     std::optional<instruction> instruction::prev() const
     {
-        return *this - size();
+        auto start = m_impl->address - max_instruction_size;
+        std::optional<instruction> last;
+
+        while (start < m_impl->address)
+        {
+            auto instruction = at(start);
+
+            if (!instruction)
+            {
+                start++;
+                continue;
+            }
+
+            start += instruction->size();
+            last.emplace(std::move(instruction.value()));
+        }
+
+        return last;
     }
 
     std::optional<instruction> instruction::next() const
