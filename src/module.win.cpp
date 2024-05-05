@@ -1,8 +1,6 @@
 #include "module.hpp"
 
 #include <windows.h>
-
-#include <imagehlp.h>
 #include <psapi.h>
 
 #include <functional>
@@ -195,43 +193,27 @@ namespace lime
 
     void module::impl::iterate_symbols(const module::impl::callback_t &callback) const
     {
-        char path[MAX_PATH];
-        GetModuleFileNameA(handle, path, MAX_PATH);
+        const auto base = reinterpret_cast<std::uintptr_t>(info.lpBaseOfDll);
 
-        _LOADED_IMAGE image;
+        auto *header    = reinterpret_cast<IMAGE_DOS_HEADER *>(base);
+        auto *nt_header = reinterpret_cast<IMAGE_NT_HEADERS *>(base + header->e_lfanew);
 
-        if (!MapAndLoad(path, nullptr, &image, TRUE, TRUE))
+        auto *exports = reinterpret_cast<IMAGE_EXPORT_DIRECTORY *>(
+            base + nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
+
+        auto *names = reinterpret_cast<std::uint32_t *>(base + exports->AddressOfNames);
+
+        for (auto i = 0u; i < exports->NumberOfNames; i++)
         {
-            return;
-        }
+            const auto *current = reinterpret_cast<const char *>(base + names[i]);
 
-        ULONG size{};
-        const auto *export_directory = reinterpret_cast<_IMAGE_EXPORT_DIRECTORY *>(
-            ImageDirectoryEntryToData(image.MappedAddress, false, IMAGE_DIRECTORY_ENTRY_EXPORT, &size));
-
-        if (!export_directory)
-        {
-            UnMapAndLoad(&image);
-            return;
-        }
-
-        const auto *names = reinterpret_cast<std::uintptr_t *>(
-            ImageRvaToVa(image.FileHeader, image.MappedAddress, export_directory->AddressOfNames, nullptr));
-
-        for (auto i = 0u; export_directory->NumberOfNames > i; i++)
-        {
-            const auto *address = ImageRvaToVa(image.FileHeader, image.MappedAddress, names[i], nullptr);
-            const auto *name    = reinterpret_cast<const char *>(address);
-
-            if (!callback(name))
+            if (!callback(current))
             {
                 continue;
             }
 
             break;
         }
-
-        UnMapAndLoad(&image);
     }
 
     std::optional<module> module::impl::get(HMODULE module)
