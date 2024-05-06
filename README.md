@@ -10,6 +10,7 @@ Lime is a *cross-platform* library that is focused on game modding and tries to 
 - Detours
   - x86/x86-64
   - Lambda support
+  - Calling Convention support _(Even for lambdas!)_
 - Instruction
   > Allows to work with instructions (i.e. follow jumps/calls, ...)
 - Memory Pages
@@ -74,5 +75,6 @@ This should be used for compatibility with wine as it currently does not support
 ## 📖 Examples
 
 https://github.com/Curve/lime/blob/7de073bd4736900193f6af5c543a3cf62e6f1a73/tests/hook.test.cpp#L46-L52
+https://github.com/Curve/lime/blob/9ee66d3cc9e8976d5d8a40856d7ee5a09d32c415/tests/hook.test.cpp#L44-L52
 
 > For more examples see [tests](tests/)
