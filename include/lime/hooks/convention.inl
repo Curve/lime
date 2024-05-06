@@ -5,21 +5,19 @@
 #include <utility>
 #include <cstdint>
 
-namespace lime
+namespace lime::detail
 {
-    namespace detail
+    template <typename Ret, typename... Args>
+    struct calling_convention<Ret(Args...), convention::automatic>
     {
-        template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::automatic>
-        {
-            using add = Ret(Args...);
+        using add = Ret(Args...);
 
-            template <auto Function>
-            static Ret wrapper(Args... args)
-            {
-                return Function(std::forward<Args>(args)...);
-            }
-        };
+        template <auto Function>
+        static Ret wrapper(Args... args)
+        {
+            return Function(std::forward<Args>(args)...);
+        }
+    };
 
 #if INTPTR_MAX == INT32_MAX
 
@@ -40,63 +38,62 @@ namespace lime
 #pragma GCC diagnostic ignored "-Wattributes"
 #endif
 
-        template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::c_cdecl>
+    template <typename Ret, typename... Args>
+    struct calling_convention<Ret(Args...), convention::c_cdecl>
+    {
+        using add = Ret LIME_CDECL(Args...);
+
+        template <auto Function>
+        static Ret LIME_CDECL wrapper(Args... args)
         {
-            using add = Ret LIME_CDECL(Args...);
+            return Function(std::forward<Args>(args)...);
+        }
+    };
 
-            template <auto Function>
-            static Ret LIME_CDECL wrapper(Args... args)
-            {
-                return Function(std::forward<Args>(args)...);
-            }
-        };
+    template <typename Ret, typename... Args>
+    struct calling_convention<Ret(Args...), convention::c_stdcall>
+    {
+        using add = Ret LIME_STDCALL(Args...);
 
-        template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::c_stdcall>
+        template <auto Function>
+        static Ret LIME_STDCALL wrapper(Args... args)
         {
-            using add = Ret LIME_STDCALL(Args...);
+            return Function(std::forward<Args>(args)...);
+        }
+    };
 
-            template <auto Function>
-            static Ret LIME_STDCALL wrapper(Args... args)
-            {
-                return Function(std::forward<Args>(args)...);
-            }
-        };
+    template <typename Ret, typename... Args>
+    struct calling_convention<Ret(Args...), convention::c_fastcall>
+    {
+        using add = Ret LIME_FASTCALL(Args...);
 
-        template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::c_fastcall>
+        template <auto Function>
+        static Ret LIME_FASTCALL wrapper(Args... args)
         {
-            using add = Ret LIME_FASTCALL(Args...);
+            return Function(std::forward<Args>(args)...);
+        }
+    };
 
-            template <auto Function>
-            static Ret LIME_FASTCALL wrapper(Args... args)
-            {
-                return Function(std::forward<Args>(args)...);
-            }
-        };
+    template <typename Ret, typename... Args>
+    struct calling_convention<Ret(Args...), convention::c_thiscall>
+    {
+        using add = Ret LIME_THISCALL(Args...);
 
-        template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::c_thiscall>
+        template <auto Function>
+        static Ret LIME_THISCALL wrapper(Args... args)
         {
-            using add = Ret LIME_THISCALL(Args...);
-
-            template <auto Function>
-            static Ret LIME_THISCALL wrapper(Args... args)
-            {
-                return Function(std::forward<Args>(args)...);
-            }
-        };
+            return Function(std::forward<Args>(args)...);
+        }
+    };
 
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
 
 #endif
-    }; // namespace detail
 
 #undef LIME_CDECL
 #undef LIME_STDCALL
 #undef LIME_FASTCALL
 #undef LIME_THISCALL
-} // namespace lime
+} // namespace lime::detail
