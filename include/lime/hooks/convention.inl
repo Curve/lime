@@ -22,6 +22,7 @@ namespace lime
         };
 
 #if INTPTR_MAX == INT32_MAX
+
 #ifdef _MSC_VER
 #define LIME_CDECL    __cdecl
 #define LIME_STDCALL  __stdcall
@@ -90,11 +91,12 @@ namespace lime
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif
+
+#endif
     }; // namespace detail
 
 #undef LIME_CDECL
 #undef LIME_STDCALL
 #undef LIME_FASTCALL
 #undef LIME_THISCALL
-#endif
 } // namespace lime
