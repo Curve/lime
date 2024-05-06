@@ -2,41 +2,18 @@
 
 #include "hook.hpp"
 
-#include <cassert>
-#include <boost/callable_traits.hpp>
-
 namespace lime
 {
-    template <typename Lambda, typename Signature>
-    consteval auto detail::can_invoke()
-    {
-        using args_t = boost::callable_traits::args_t<Signature>;
-        using rtn_t  = boost::callable_traits::return_type_t<Signature>;
-
-        return std::apply(
-            []<typename... T>(T &&...)
-            {
-                if constexpr (!std::invocable<Lambda, hook<Signature> *, T...>)
-                {
-                    return false;
-                }
-                else
-                {
-                    return std::is_same_v<std::invoke_result_t<Lambda, hook<Signature> *, T...>, rtn_t>;
-                }
-            },
-            args_t{});
-    }
-
-    template <typename Signature>
-    typename hook<Signature>::signature_t hook<Signature>::original() const
+    template <detail::function_signature Signature, convention Convention>
+    typename hook<Signature, Convention>::signature_t hook<Signature, Convention>::original() const
     {
         return reinterpret_cast<signature_t>(hook_base::original());
     }
 
-    template <typename Signature>
+    template <detail::function_signature Signature, convention Convention>
     template <detail::address Source, detail::address Target>
-    hook<Signature>::rtn_t<std::unique_ptr> hook<Signature>::create(Source source, Target target)
+    hook<Signature, Convention>::rtn_t<std::unique_ptr> hook<Signature, Convention>::create(Source source,
+                                                                                            Target target)
     {
         auto source_address = reinterpret_cast<std::uintptr_t>(source);
         auto target_address = reinterpret_cast<std::uintptr_t>(target);
@@ -52,28 +29,21 @@ namespace lime
         return std::unique_ptr<hook>{static_cast<hook *>(ptr)};
     }
 
-    template <typename Signature>
-    template <typename Callable>
-    requires detail::invocable_lambda_like<Callable, Signature>
-    hook<Signature>::rtn_t<std::add_pointer_t> hook<Signature>::create(detail::address auto source, Callable &&target)
+    template <detail::function_signature Signature, convention Convention>
+    template <detail::address Source, detail::lambda_like Callable>
+    hook<Signature, Convention>::rtn_t<std::add_pointer_t> hook<Signature, Convention>::create(Source source,
+                                                                                               Callable &&target)
     {
-        using args_t = boost::callable_traits::args_t<Signature>;
-        using rtn_t  = boost::callable_traits::return_type_t<Signature>;
-
-        static hook<Signature> *rtn;
+        static hook<Signature, Convention> *rtn;
         static auto lambda = std::forward<Callable>(target);
 
-        static constexpr auto wrapper = std::apply(
-            []<typename... T>(T &&...)
-            {
-                return [](T... args) -> rtn_t
-                {
-                    return lambda(rtn, std::forward<T>(args)...);
-                };
-            },
-            args_t{});
+        static constexpr auto dispatch = []<typename... T>(T &&...args)
+        {
+            return lambda(rtn, std::forward<T>(args)...);
+        };
 
-        auto result = create(source, +wrapper);
+        auto wrapper = detail::calling_convention<Signature, Convention>::template wrapper<dispatch>;
+        auto result  = create(source, wrapper);
 
         if (!result)
         {
