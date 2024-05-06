@@ -34,8 +34,13 @@ namespace lime
 #define LIME_THISCALL __attribute__((thiscall))
 #endif
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
+
         template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::cdecl>
+        struct calling_convention<Ret(Args...), convention::c_cdecl>
         {
             using add = Ret LIME_CDECL(Args...);
 
@@ -47,7 +52,7 @@ namespace lime
         };
 
         template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::stdcall>
+        struct calling_convention<Ret(Args...), convention::c_stdcall>
         {
             using add = Ret LIME_STDCALL(Args...);
 
@@ -59,7 +64,7 @@ namespace lime
         };
 
         template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::fastcall>
+        struct calling_convention<Ret(Args...), convention::c_fastcall>
         {
             using add = Ret LIME_FASTCALL(Args...);
 
@@ -71,7 +76,7 @@ namespace lime
         };
 
         template <typename Ret, typename... Args>
-        struct calling_convention<Ret(Args...), convention::thiscall>
+        struct calling_convention<Ret(Args...), convention::c_thiscall>
         {
             using add = Ret LIME_THISCALL(Args...);
 
@@ -81,6 +86,10 @@ namespace lime
                 return Function(std::forward<Args>(args)...);
             }
         };
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
     }; // namespace detail
 
 #undef LIME_CDECL

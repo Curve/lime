@@ -5,10 +5,10 @@ namespace lime
     enum class convention
     {
         automatic,
-        cdecl,
-        stdcall,
-        fastcall,
-        thiscall,
+        c_cdecl,
+        c_stdcall,
+        c_fastcall,
+        c_thiscall,
     };
 
     namespace detail

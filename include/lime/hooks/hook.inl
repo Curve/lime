@@ -35,7 +35,7 @@ namespace lime
                                                                                                Callable &&target)
     {
         static hook<Signature, Convention> *rtn;
-        static auto lambda = std::forward<Callable>(target);
+        [[maybe_unused]] static auto lambda = std::forward<Callable>(target);
 
         static constexpr auto dispatch = []<typename... T>(T &&...args)
         {
