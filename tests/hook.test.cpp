@@ -40,6 +40,18 @@ suite<"Hooks"> hook_suite = []
                                      return rtn;
                                  });
 
+#if INTPTR_MAX == INT32_MAX
+    using hook_t = lime::hook<int(void *, int), lime::convention::c_fastcall>;
+
+    hook_t::create(0xDEADBEEF,
+                   [&](auto *hook, void *thiz, int param) -> int
+                   {
+                       auto ret = hook->original()(thiz, param);
+                       delete hook;
+                       return ret;
+                   });
+#endif
+
     expect(eq(test_fn(10), 20));
     expect(eq(test_fn(10), 10));
 
