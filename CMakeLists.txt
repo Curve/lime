@@ -82,14 +82,8 @@ CPMAddPackage(
   OPTIONS        "EXPECTED_BUILD_TESTS OFF"
 )
 
-CPMAddPackage(
-  NAME           boost_callable_traits
-  GIT_TAG        boost-1.84.0
-  GIT_REPOSITORY "https://github.com/boostorg/callable_traits"
-)
-
 target_link_libraries(${PROJECT_NAME} PRIVATE Zydis)
-target_link_libraries(${PROJECT_NAME} PUBLIC  cr::flagpp tl::expected boost_callable_traits)
+target_link_libraries(${PROJECT_NAME} PUBLIC  cr::flagpp tl::expected)
 
 # --------------------------------------------------------------------------------------------------------
 # Setup backends
