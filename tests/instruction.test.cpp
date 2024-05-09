@@ -24,6 +24,8 @@ std::vector<unsigned char> code = {
 
 suite<"Instruction"> instruction_suite = []
 {
+    static constexpr auto is64bit = sizeof(std::uintptr_t) == 8;
+
     static constexpr auto MNEMONIC_MOV = 436;
     static constexpr auto MNEMONIC_JMP = 311;
 
@@ -60,7 +62,7 @@ suite<"Instruction"> instruction_suite = []
 
     expect(eq(rel_move.has_value(), true));
 
-    expect(eq(rel_move->relative(), true));
+    expect(eq(rel_move->relative(), is64bit));
     expect(eq(rel_move->branching(), false));
     expect(eq(rel_move->mnemonic(), MNEMONIC_MOV));
 
@@ -72,7 +74,7 @@ suite<"Instruction"> instruction_suite = []
 
     expect(eq(jmp->addr(), jmp_until->addr()));
 
-    expect(eq(jmp->relative(), true));
+    expect(eq(jmp->relative(), is64bit));
     expect(eq(jmp->branching(), true));
     expect(eq(jmp->mnemonic(), MNEMONIC_JMP));
 
@@ -84,17 +86,15 @@ suite<"Instruction"> instruction_suite = []
     expect(eq(abs_jmp->branching(), true));
     expect(eq(abs_jmp->mnemonic(), MNEMONIC_JMP));
 
-#if INTPTR_MAX == INT64_MAX
-    expect(eq(next->size(), 3));
-    expect(eq(next->addr(), reinterpret_cast<std::uintptr_t>(data) + 0x2));
-
-    expect(eq(rel_move->size(), 7));
-    expect(eq(rel_move->addr(), reinterpret_cast<std::uintptr_t>(data) + 15));
-
-    expect(eq(jmp->size(), 6));
-    expect(eq(jmp->addr(), rel_move->addr() + rel_move->size()));
-
-    expect(eq(abs_jmp->size(), 2));
     expect(eq(abs_jmp->addr(), jmp->addr() + jmp->size()));
+    expect(eq(rel_move->addr(), mov->addr() + mov->size()));
+    expect(eq(jmp->addr(), rel_move->addr() + rel_move->size()));
+    expect(eq(mov->addr(), instruction->addr() + instruction->size()));
+
+#if INTPTR_MAX == INT64_MAX
+    expect(eq(mov->size(), 3));
+    expect(eq(jmp->size(), 6));
+    expect(eq(abs_jmp->size(), 2));
+    expect(eq(rel_move->size(), 7));
 #endif
 };
