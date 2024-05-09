@@ -81,10 +81,10 @@ namespace lime
         if (auto follow = start.follow(); follow)
         {
             start = std::move(follow.value());
-            page.emplace(page::unsafe(start));
+            page.emplace(page::unsafe(start.addr()));
         }
 
-        rtn->m_impl->source      = std::make_unique<address>(address::unsafe(std::move(start)));
+        rtn->m_impl->source      = std::make_unique<address>(address::unsafe(start.addr()));
         rtn->m_impl->source_page = std::make_unique<lime::page>(std::move(page.value()));
         rtn->m_impl->target      = target;
 
@@ -98,7 +98,7 @@ namespace lime
 
         # The springboard is used to jump to the target function.
         # The idea here is just that our module is probably too far away from our target, so we just use an absolute jmp
-        # for simplicity sake. As we wan't to override as little instructions as possible in the source function we use
+        # for simplicity sake. As we want to override as little instructions as possible in the source function we use
         # the springboard.
         */
 
@@ -234,7 +234,7 @@ namespace lime
 
             const auto disp = current.displacement();
 
-            if (disp.size > 0 && !try_offset(disp, current, difference))
+            if (disp.size > 0 && !try_offset(disp, current.addr(), difference))
             {
                 return false;
             }
@@ -248,7 +248,7 @@ namespace lime
                     continue;
                 }
 
-                if (try_offset(imm, current, difference))
+                if (try_offset(imm, current.addr(), difference))
                 {
                     continue;
                 }
@@ -260,7 +260,7 @@ namespace lime
 
                 /*
                 # We failed to offset, thus we have to fall back to a jump-table at the end of the trampoline
-                 */
+                */
 
                 const auto imm_value =
                     std::visit([](auto amount) { return static_cast<std::int64_t>(amount); }, imm.amount);
@@ -269,11 +269,11 @@ namespace lime
                 const auto offset   = -imm_value + static_cast<std::int64_t>(rel_jump);
 
                 const auto destination = original_rip + imm_value;
-                const auto table_entry = impl::make_jmp(current, destination, near);
+                const auto table_entry = impl::make_jmp(current.addr(), destination, near);
 
                 jump_table.insert(jump_table.end(), table_entry.begin(), table_entry.end());
 
-                if (!try_offset(imm, current, -offset))
+                if (!try_offset(imm, current.addr(), -offset))
                 {
                     return false;
                 }
@@ -339,11 +339,11 @@ namespace lime
 
     bool hook_base::impl::can_relocate_far()
     {
-        auto i = 0u;
+        auto start = reinterpret_cast<std::uintptr_t>(prologue.data());
 
-        while (prologue.size() > i)
+        for (auto i = 0u; prologue.size() > i;)
         {
-            const auto current = instruction::unsafe(reinterpret_cast<std::uintptr_t>(prologue.data() + i));
+            auto current = instruction::unsafe(start + i);
             i += current.size();
 
             if (!current.relative())

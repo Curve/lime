@@ -79,7 +79,6 @@ namespace lime
         [[nodiscard]] std::optional<instruction> operator+(std::size_t) const;
 
       public:
-        [[nodiscard]] operator std::uintptr_t() const;
         [[nodiscard]] std::strong_ordering operator<=>(const instruction &) const;
 
       public:

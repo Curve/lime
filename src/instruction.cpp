@@ -68,18 +68,24 @@ namespace lime
         auto start = m_impl->address - max_instruction_size;
         std::optional<instruction> last;
 
-        while (start < m_impl->address)
+        for (auto current = start; current < m_impl->address; current++)
         {
-            auto instruction = at(start);
+            auto instruction = at(current);
 
             if (!instruction)
             {
-                start++;
                 continue;
             }
 
-            start += instruction->size();
+            auto next = instruction->next();
+
+            if (!next || next->addr() != m_impl->address)
+            {
+                continue;
+            }
+
             last.emplace(std::move(instruction.value()));
+            break;
         }
 
         return last;
@@ -132,14 +138,9 @@ namespace lime
         return at(m_impl->address + amount);
     }
 
-    instruction::operator std::uintptr_t() const
-    {
-        return addr();
-    }
-
     std::strong_ordering instruction::operator<=>(const instruction &other) const
     {
-        auto address = static_cast<std::uintptr_t>(other);
+        auto address = other.addr();
 
         if (address > m_impl->address)
         {
