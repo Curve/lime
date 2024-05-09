@@ -76,6 +76,11 @@ namespace lime
             return tl::make_unexpected(hook_error::bad_page);
         }
 
+        if (!(page->prot() & lime::protection::read))
+        {
+            return tl::make_unexpected(hook_error::bad_prot);
+        }
+
         auto start = instruction::unsafe(source);
 
         if (auto follow = start.follow(); follow)

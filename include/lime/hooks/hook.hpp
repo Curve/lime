@@ -46,6 +46,7 @@ namespace lime
         protect,
         relocate,
         bad_page,
+        bad_prot,
     };
 
     class hook_base
