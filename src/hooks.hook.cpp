@@ -46,7 +46,7 @@ namespace lime
 
     hook_base::~hook_base()
     {
-        if (!m_impl)
+        if (!m_impl || !m_impl->source_page)
         {
             return;
         }
