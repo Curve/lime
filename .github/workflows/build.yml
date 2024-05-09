@@ -23,7 +23,7 @@ jobs:
 
       - name: Compile
         run: |
-          cmake -B build -Dlime_tests=ON 
+          cmake -B build -Dlime_tests=ON
           cmake --build build --config Debug
 
       - name: Run Tests
@@ -57,6 +57,7 @@ jobs:
       fail-fast: false
       matrix:
         language: ["cpp"]
+        arch: ["Win32", "x64"]
 
     steps:
       - name: Checkout
@@ -64,7 +65,7 @@ jobs:
 
       - name: Compile
         run: |
-          cmake -B build -Dlime_tests=ON -T ClangCL -A x64 
+          cmake -B build -Dlime_tests=ON -T ClangCL -A ${{ matrix.arch }}
           cmake --build build --config Debug
 
       - name: Run Tests
