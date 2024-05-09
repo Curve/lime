@@ -1,4 +1,5 @@
 #include "page.hpp"
+#include "constants.hpp"
 
 #include <cassert>
 #include <cinttypes>
@@ -208,6 +209,11 @@ namespace lime
     std::shared_ptr<page> page::allocate<alloc_policy::nearby>(std::uintptr_t where, std::size_t size,
                                                                protection protection)
     {
+        if constexpr (lime::arch == lime::architecture::x86)
+        {
+            return allocate(size, protection);
+        }
+
         auto aligned = where & (getpagesize() - 1) ? (where + getpagesize()) & ~(getpagesize() - 1) : where;
         auto *alloc  = MAP_FAILED;
 
