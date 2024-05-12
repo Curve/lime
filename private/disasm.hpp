@@ -21,5 +21,5 @@ namespace lime::disasm
 
     disp displacement(std::uintptr_t);
     std::vector<imm> immediates(std::uintptr_t);
-    std::optional<std::uintptr_t> follow(std::uintptr_t);
+    std::optional<std::uintptr_t> follow(std::uintptr_t address, std::optional<std::uintptr_t> = std::nullopt);
 } // namespace lime::disasm

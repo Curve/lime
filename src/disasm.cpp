@@ -153,7 +153,7 @@ namespace lime
         return rtn;
     }
 
-    std::optional<std::uintptr_t> disasm::follow(std::uintptr_t address)
+    std::optional<std::uintptr_t> disasm::follow(std::uintptr_t address, std::optional<std::uintptr_t> rip)
     {
         const auto decoder = get_decoder();
         const auto *buffer = reinterpret_cast<void *>(address);
@@ -167,7 +167,7 @@ namespace lime
         }
 
         ZyanU64 result = 0;
-        ZydisCalcAbsoluteAddress(&inst, operands, address, &result);
+        ZydisCalcAbsoluteAddress(&inst, operands, rip.value_or(address), &result);
 
         return result;
     }

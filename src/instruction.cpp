@@ -96,18 +96,6 @@ namespace lime
         return *this + size();
     }
 
-    std::optional<instruction> instruction::follow() const
-    {
-        auto new_address = disasm::follow(m_impl->address);
-
-        if (!new_address)
-        {
-            return std::nullopt;
-        }
-
-        return at(new_address.value());
-    }
-
     std::optional<instruction> instruction::next(std::size_t mnemonic) const
     {
         auto current = next();
@@ -126,6 +114,28 @@ namespace lime
         }
 
         return current;
+    }
+
+    std::optional<instruction> instruction::follow() const
+    {
+        auto new_address = disasm::follow(m_impl->address);
+
+        if (!new_address)
+        {
+            return std::nullopt;
+        }
+
+        return at(new_address.value());
+    }
+
+    std::optional<std::uintptr_t> instruction::absolute() const
+    {
+        return disasm::follow(m_impl->address);
+    }
+
+    std::optional<std::uintptr_t> instruction::absolute(std::uintptr_t rip) const
+    {
+        return disasm::follow(m_impl->address, rip);
     }
 
     std::optional<instruction> instruction::operator-(std::size_t amount) const
