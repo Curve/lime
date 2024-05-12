@@ -10,15 +10,16 @@ std::vector<unsigned char> code = {
 #if INTPTR_MAX == INT64_MAX
     0x8b, 0x02,                               // mov eax, [rdx]
     0x4c, 0x8b, 0xc1,                         // mov [rcx], eax
-    0x48, 0x8B, 0x05, 0x05, 0x00, 0x00, 0x00, // mov rax, [rip+0x5]
+    0x48, 0x8b, 0x05, 0x05, 0x00, 0x00, 0x00, // mov rax, [rip+0x5]
     0xff, 0x25, 0x10, 0x00, 0x00, 0x00,       // jmp [rip+0x10]
     0xff, 0xe0,                               // jmp rax
+    0xe8, 0x00, 0x00, 0x00, 0x00,             // call 0x0
 #else
-    0x8B, 0x02,                         // mov eax, [edx]
+    0x8b, 0x02,                         // mov eax, [edx]
     0x89, 0x01,                         // mov [ecx], eax
-    0xA1, 0x05, 0x00, 0x00, 0x00,       // mov eax, [rip+0x5]
-    0xFF, 0x25, 0x10, 0x00, 0x00, 0x00, // jmp [rip+0x10]
-    0xFF, 0xE0,                         // jmp eax
+    0xa1, 0x05, 0x00, 0x00, 0x00,       // mov eax, [rip+0x5]
+    0xff, 0x25, 0x10, 0x00, 0x00, 0x00, // jmp [rip+0x10]
+    0xff, 0xe0,                         // jmp eax
 #endif
 };
 
@@ -92,9 +93,17 @@ suite<"Instruction"> instruction_suite = []
     expect(eq(mov->addr(), instruction->addr() + instruction->size()));
 
 #if INTPTR_MAX == INT64_MAX
+    auto call = abs_jmp->next();
+
+    expect(eq(call.has_value(), true));
+
+    expect(eq(call->relative(), true));
+    expect(eq(call->branching(), true));
+
     expect(eq(mov->size(), 3));
+    expect(eq(rel_move->size(), 7));
+
     expect(eq(jmp->size(), 6));
     expect(eq(abs_jmp->size(), 2));
-    expect(eq(rel_move->size(), 7));
 #endif
 };
