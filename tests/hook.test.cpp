@@ -6,6 +6,11 @@ using namespace boost::ut::literals;
 
 int test_fn(int param)
 {
+    if (param == 1337)
+    {
+        return 0;
+    }
+
     return param;
 }
 
@@ -19,9 +24,11 @@ int test_hook(int param)
 suite<"Hooks"> hook_suite = []
 {
     expect(eq(test_fn(10), 10));
+    expect(eq(test_fn(1337), 0));
 
     original_test = std::move(lime::hook<int(int)>::create(test_fn, test_hook).value());
     expect(eq(test_fn(10), 15));
+    expect(eq(test_fn(1337), 1342));
 
     original_test.reset();
     expect(eq(test_fn(10), 10));
