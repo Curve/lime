@@ -125,7 +125,15 @@ namespace lime
         const auto spring_board = near ? false : rtn->m_impl->create_springboard();
         const auto destination  = spring_board ? rtn->m_impl->spring_board->start() : target;
 
-        const auto jump = impl::make_jmp(source, destination, near || spring_board);
+        auto jump           = impl::make_jmp(source, destination, near || spring_board);
+        const auto prologue = rtn->m_impl->prologue.size();
+
+        if (jump.size() < prologue)
+        {
+            const auto remaining = prologue - jump.size();
+            std::vector<std::uint8_t> padding(remaining, 0x90);
+            std::ranges::move(padding, std::back_inserter(jump));
+        }
 
         if (!rtn->m_impl->source_page->protect(rwx))
         {
