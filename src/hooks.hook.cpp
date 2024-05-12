@@ -204,10 +204,10 @@ namespace lime
 
         const auto start = reinterpret_cast<std::uintptr_t>(content.data());
 
-        for (auto i = 0u, size = 0u; prologue.size() > i; i += size)
+        for (auto i = 0u, inst_size = 0u; prologue.size() > i; i += inst_size)
         {
             auto inst = instruction::unsafe(start + i);
-            size      = inst.size();
+            inst_size = inst.size();
 
             if (!inst.relative())
             {
@@ -218,7 +218,7 @@ namespace lime
             const auto original_target = inst.absolute(original_rip).value();
 
             const auto rip        = trampoline->start() + i;
-            const auto new_offset = trampoline->start() + content.size() - rip - size;
+            const auto new_offset = trampoline->start() + content.size() - rip - inst_size;
 
             auto offset = offset_of(inst);
 
@@ -340,8 +340,8 @@ namespace lime
     {
         auto visitor = [&offset]<typename T>(T *source)
         {
-            std::intptr_t desired = *source - offset;
-            auto actual           = *source - static_cast<T>(offset);
+            auto desired = static_cast<std::intptr_t>(*source) - offset;
+            auto actual  = *source - static_cast<T>(offset);
 
             if (static_cast<std::intptr_t>(actual) != desired)
             {
