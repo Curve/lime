@@ -274,7 +274,7 @@ namespace lime
 
     bool hook_base::impl::create_springboard()
     {
-        spring_board = page::allocate(target, size::jmp_far, rwx);
+        spring_board = page::allocate(source->addr(), size::jmp_far, rwx);
 
         if (!spring_board)
         {
