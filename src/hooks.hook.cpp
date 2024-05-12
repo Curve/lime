@@ -8,6 +8,7 @@
 
 #include <limits>
 #include <cassert>
+#include <iterator>
 #include <algorithm>
 
 namespace lime
@@ -194,6 +195,11 @@ namespace lime
         else
         {
             trampoline = page::allocate(size, rwx);
+        }
+
+        if (!trampoline)
+        {
+            return false;
         }
 
         auto content = prologue;
