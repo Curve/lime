@@ -46,10 +46,6 @@ namespace lime
         [[nodiscard]] std::optional<address> operator+(std::size_t) const;
 
       public:
-        [[nodiscard]] operator void *() const;
-        [[nodiscard]] operator std::uintptr_t() const;
-
-      public:
         [[nodiscard]] std::strong_ordering operator<=>(const address &) const;
 
       public:

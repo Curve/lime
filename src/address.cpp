@@ -80,19 +80,9 @@ namespace lime
         return at(m_impl->address - amount);
     }
 
-    address::operator void *() const
-    {
-        return ptr();
-    }
-
-    address::operator std::uintptr_t() const
-    {
-        return addr();
-    }
-
     std::strong_ordering address::operator<=>(const address &other) const
     {
-        const auto address = static_cast<std::uintptr_t>(other);
+        const auto address = other.addr();
 
         if (address > m_impl->address)
         {
