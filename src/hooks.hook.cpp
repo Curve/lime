@@ -122,10 +122,10 @@ namespace lime
             return tl::make_unexpected(hook_error::relocate);
         }
 
-        const auto spring_board = near ? false : rtn->m_impl->create_springboard();
+        const auto spring_board = rtn->m_impl->create_springboard();
         const auto destination  = spring_board ? rtn->m_impl->spring_board->start() : target;
 
-        const auto jump = impl::make_jmp(start->addr(), destination, near || spring_board);
+        const auto jump = impl::make_jmp(start->addr(), destination, spring_board);
 
         if (!rtn->m_impl->source_page->protect(rwx))
         {
@@ -403,7 +403,7 @@ namespace lime
 
         if (near || arch == architecture::x86)
         {
-            rtn.insert(rtn.end(), {0xE9});
+            rtn = {0xE9};
             rtn.resize(rtn.size() + sizeof(std::int32_t));
 
             auto relative = static_cast<std::int32_t>(target - source - size::jmp_near);
