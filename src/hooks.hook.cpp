@@ -131,11 +131,6 @@ namespace lime
             return tl::make_unexpected(hook_error::protect);
         }
 
-        if (!rtn->m_impl->source_page->protect(rwx))
-        {
-            return tl::make_unexpected(hook_error::protect);
-        }
-
         rtn->m_impl->source->write(jump.data(), jump.size());
         rtn->m_impl->source_page->restore();
 
@@ -194,7 +189,7 @@ namespace lime
             return false;
         }
 
-        auto content = make_jmp(0, target, false);
+        auto content = make_jmp(spring_board->start(), target, false);
         address::unsafe(spring_board->start()).write(content.data(), content.size());
 
         return true;
@@ -242,10 +237,11 @@ namespace lime
             const auto original_rip    = source->addr() + i;
             const auto original_target = inst.absolute(original_rip).value();
 
-            const auto rip        = trampoline->start() + i;
-            const auto new_offset = trampoline->start() + content.size() - rip - inst_size;
+            const auto rip       = trampoline->start() + i;
+            const auto reloc_rip = trampoline->start() + content.size();
 
-            auto offset = offset_of(inst);
+            const auto new_offset = reloc_rip - rip - inst_size;
+            auto offset           = offset_of(inst);
 
             if (!offset)
             {
@@ -262,7 +258,7 @@ namespace lime
             }
             else
             {
-                std::ranges::move(make_jmp(0, original_target, false), std::back_inserter(content));
+                std::ranges::move(make_jmp(reloc_rip, original_target, false), std::back_inserter(content));
             }
 
             if (try_redirect(offset.value(), static_cast<std::intptr_t>(new_offset)))
