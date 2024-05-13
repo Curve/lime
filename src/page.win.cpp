@@ -1,4 +1,5 @@
 #include "page.hpp"
+#include "module.hpp"
 #include "constants.hpp"
 
 #include <limits>
@@ -250,8 +251,8 @@ namespace lime
 
         static const auto VirtualAlloc2 = []()
         {
-            auto *kernel_base = LoadLibraryA("kernelbase.dll");
-            return reinterpret_cast<decltype(::VirtualAlloc2) *>(GetProcAddress(kernel_base, "VirtualAlloc2"));
+            auto kernel32 = module::load("kernel32.dll");
+            return reinterpret_cast<decltype(::VirtualAlloc2) *>(kernel32->symbol("VirtualAlloc2"));
         }();
 
         auto *alloc = VirtualAlloc2(GetCurrentProcess(), nullptr, size, MEM_COMMIT | MEM_RESERVE,
