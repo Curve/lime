@@ -4,7 +4,6 @@
 #include "address.hpp"
 #include "constants.hpp"
 #include "instruction.hpp"
-#include "tl/expected.hpp"
 
 #include <limits>
 #include <cassert>
@@ -237,10 +236,10 @@ namespace lime
             const auto original_rip    = source->addr() + i;
             const auto original_target = inst.absolute(original_rip).value();
 
-            const auto rip       = trampoline->start() + i;
-            const auto reloc_rip = trampoline->start() + content.size();
+            const auto rip           = trampoline->start() + i;
+            const auto reloc_address = trampoline->start() + content.size();
 
-            const auto new_offset = reloc_rip - rip - inst_size;
+            const auto new_offset = reloc_address - rip - inst_size;
             auto offset           = offset_of(inst);
 
             if (!offset)
@@ -258,7 +257,7 @@ namespace lime
             }
             else
             {
-                std::ranges::move(make_jmp(reloc_rip, original_target, false), std::back_inserter(content));
+                std::ranges::move(make_jmp(reloc_address, original_target, false), std::back_inserter(content));
             }
 
             if (try_redirect(offset.value(), static_cast<std::intptr_t>(new_offset)))
