@@ -49,7 +49,8 @@ set(lime_no_alloc2 ON)
 
 Can be used to disable the usage of `VirtualAlloc2`.  
 
-This should be used for compatibility with wine as it currently does not support the `LowestStartingAddress` requirement.
+~~This should be used for compatibility with wine as it currently does not support the `LowestStartingAddress` requirement.~~  
+Should work since wine 8.11 🎉
 
 # 📦 Installation
 
