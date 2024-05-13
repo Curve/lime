@@ -93,7 +93,6 @@ endif()
 if (WIN32)
   file(GLOB src "src/*.win*.cpp")
   target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
-  target_link_libraries(${PROJECT_NAME} PUBLIC imagehlp dbghelp)
 endif()
 
 target_sources(${PROJECT_NAME} PRIVATE ${src})
