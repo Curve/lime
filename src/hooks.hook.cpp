@@ -41,8 +41,8 @@ namespace lime
         [[nodiscard]] std::size_t estimate_trampoline_size(bool near) const;
 
       public:
-        bool create_trampoline(bool near);
         bool create_springboard();
+        bool create_trampoline(bool near, bool spring_board);
 
       public:
         static std::optional<offset_ptr> offset_of(const instruction &source);
@@ -115,17 +115,16 @@ namespace lime
         rtn->m_impl->source_page = std::make_unique<lime::page>(std::move(page.value()));
         rtn->m_impl->source      = std::make_unique<address>(address::unsafe(start->addr()));
 
-        const auto near = rtn->m_impl->create_trampoline(true);
+        const auto spring_board = rtn->m_impl->create_springboard();
+        const auto near         = rtn->m_impl->create_trampoline(true, spring_board);
 
-        if (!near && !rtn->m_impl->create_trampoline(false))
+        if (!near && !rtn->m_impl->create_trampoline(false, spring_board))
         {
             return tl::make_unexpected(hook_error::relocate);
         }
 
-        const auto spring_board = rtn->m_impl->create_springboard();
-        const auto destination  = spring_board ? rtn->m_impl->spring_board->start() : target;
-
-        const auto jump = impl::make_jmp(start->addr(), destination, spring_board);
+        const auto destination = spring_board ? rtn->m_impl->spring_board->start() : target;
+        const auto jump        = impl::make_jmp(start->addr(), destination, spring_board);
 
         if (!rtn->m_impl->source_page->protect(rwx))
         {
@@ -186,9 +185,24 @@ namespace lime
         return rtn;
     }
 
-    bool hook_base::impl::create_trampoline(bool near)
+    bool hook_base::impl::create_springboard()
     {
-        prologue = source->copy(required_prologue_size(near));
+        spring_board = page::allocate(source->addr(), size::jmp_far, rwx);
+
+        if (!spring_board)
+        {
+            return false;
+        }
+
+        auto content = make_jmp(0, target, false);
+        address::unsafe(spring_board->start()).write(content.data(), content.size());
+
+        return true;
+    }
+
+    bool hook_base::impl::create_trampoline(bool near, bool spring_board)
+    {
+        prologue = source->copy(required_prologue_size(spring_board));
 
         const auto size = estimate_trampoline_size(near);
         trampoline.reset();
@@ -265,21 +279,6 @@ namespace lime
         }
 
         address::unsafe(trampoline->start()).write(content.data(), content.size());
-
-        return true;
-    }
-
-    bool hook_base::impl::create_springboard()
-    {
-        spring_board = page::allocate(source->addr(), size::jmp_far, rwx);
-
-        if (!spring_board)
-        {
-            return false;
-        }
-
-        auto content = make_jmp(0, target, false);
-        address::unsafe(spring_board->start()).write(content.data(), content.size());
 
         return true;
     }
