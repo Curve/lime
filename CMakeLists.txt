@@ -62,11 +62,8 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME           Zydis
-  VERSION        4.0.0
+  VERSION        4.1.0
   GIT_REPOSITORY "https://github.com/zyantific/zydis"
-  OPTIONS        "ZYDIS_BUILD_TOOLS OFF" 
-                 "ZYDIS_BUILD_DOXYGEN OFF" 
-                 "ZYDIS_BUILD_EXAMPLES OFF"
 )
 
 CPMAddPackage(

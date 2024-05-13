@@ -68,18 +68,24 @@ namespace lime
         auto start = m_impl->address - max_instruction_size;
         std::optional<instruction> last;
 
-        while (start < m_impl->address)
+        for (auto current = start; current < m_impl->address; current++)
         {
-            auto instruction = at(start);
+            auto instruction = at(current);
 
             if (!instruction)
             {
-                start++;
                 continue;
             }
 
-            start += instruction->size();
+            auto next = instruction->next();
+
+            if (!next || next->addr() != m_impl->address)
+            {
+                continue;
+            }
+
             last.emplace(std::move(instruction.value()));
+            break;
         }
 
         return last;
@@ -88,18 +94,6 @@ namespace lime
     std::optional<instruction> instruction::next() const
     {
         return *this + size();
-    }
-
-    std::optional<instruction> instruction::follow() const
-    {
-        auto new_address = disasm::follow(m_impl->address);
-
-        if (!new_address)
-        {
-            return std::nullopt;
-        }
-
-        return at(new_address.value());
     }
 
     std::optional<instruction> instruction::next(std::size_t mnemonic) const
@@ -122,6 +116,28 @@ namespace lime
         return current;
     }
 
+    std::optional<instruction> instruction::follow() const
+    {
+        auto new_address = disasm::follow(m_impl->address);
+
+        if (!new_address)
+        {
+            return std::nullopt;
+        }
+
+        return at(new_address.value());
+    }
+
+    std::optional<std::uintptr_t> instruction::absolute() const
+    {
+        return disasm::follow(m_impl->address);
+    }
+
+    std::optional<std::uintptr_t> instruction::absolute(std::uintptr_t rip) const
+    {
+        return disasm::follow(m_impl->address, rip);
+    }
+
     std::optional<instruction> instruction::operator-(std::size_t amount) const
     {
         return at(m_impl->address - amount);
@@ -132,14 +148,9 @@ namespace lime
         return at(m_impl->address + amount);
     }
 
-    instruction::operator std::uintptr_t() const
-    {
-        return addr();
-    }
-
     std::strong_ordering instruction::operator<=>(const instruction &other) const
     {
-        auto address = static_cast<std::uintptr_t>(other);
+        auto address = other.addr();
 
         if (address > m_impl->address)
         {

@@ -1,4 +1,5 @@
 #include "page.hpp"
+#include "constants.hpp"
 
 #include <limits>
 #include <windows.h>
@@ -220,6 +221,12 @@ namespace lime
 #ifdef LIME_DISABLE_ALLOC2
         return nullptr;
 #else
+
+        if constexpr (lime::arch == lime::architecture::x86)
+        {
+            return allocate(size, protection);
+        }
+
         MEM_EXTENDED_PARAMETER param{};
         MEM_ADDRESS_REQUIREMENTS requirements{};
 

@@ -75,11 +75,14 @@ namespace lime
         [[nodiscard]] std::optional<instruction> next(std::size_t mnemonic) const;
 
       public:
+        [[nodiscard]] std::optional<std::uintptr_t> absolute() const;
+        [[nodiscard]] std::optional<std::uintptr_t> absolute(std::uintptr_t rip) const;
+
+      public:
         [[nodiscard]] std::optional<instruction> operator-(std::size_t) const;
         [[nodiscard]] std::optional<instruction> operator+(std::size_t) const;
 
       public:
-        [[nodiscard]] operator std::uintptr_t() const;
         [[nodiscard]] std::strong_ordering operator<=>(const instruction &) const;
 
       public:

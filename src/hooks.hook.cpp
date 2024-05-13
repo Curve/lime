@@ -5,48 +5,63 @@
 #include "constants.hpp"
 #include "instruction.hpp"
 
+#include <limits>
 #include <cassert>
+#include <iterator>
+#include <algorithm>
 
 namespace lime
 {
+    using offset_ptr = std::variant<std::int8_t *,   //
+                                    std::uint8_t *,  //
+                                    std::int16_t *,  //
+                                    std::uint16_t *, //
+                                    std::int32_t *,  //
+                                    std::uint32_t *  //
+                                    >;
+
+    static constexpr auto rwx = protection::read | protection::write | protection::execute;
+
     struct hook_base::impl
     {
         std::uintptr_t target;
 
       public:
         std::unique_ptr<address> source;
-        std::unique_ptr<page> source_page;
-
-      public:
+        std::shared_ptr<page> source_page;
         std::vector<std::uint8_t> prologue;
 
       public:
-        std::shared_ptr<page> spring_board;
-        [[nodiscard]] std::size_t create_springboard();
-
-      public:
         std::shared_ptr<page> trampoline;
-        [[nodiscard]] bool build_trampoline();
+        std::shared_ptr<page> spring_board;
 
       public:
-        template <typename T>
-        [[nodiscard]] bool try_offset(std::uintptr_t, std::int64_t);
-        [[nodiscard]] bool try_offset(imm, std::uintptr_t, std::int64_t);
-        [[nodiscard]] bool try_offset(disp, std::uintptr_t, std::int64_t);
+        [[nodiscard]] std::size_t required_prologue_size(bool near) const;
+        [[nodiscard]] std::size_t estimate_trampoline_size(bool near) const;
 
       public:
-        [[nodiscard]] bool can_relocate_far();
-        [[nodiscard]] std::size_t estimate_size(bool);
+        bool create_springboard();
+        bool create_trampoline(bool near, bool spring_board);
 
       public:
-        static std::vector<std::uint8_t> make_jmp(std::uintptr_t, std::uintptr_t, bool = false);
+        static std::optional<offset_ptr> offset_of(const instruction &source);
+        static std::optional<offset_ptr> offset_of(std::uintptr_t, const disp &);
+        static std::optional<offset_ptr> offset_of(std::uintptr_t, const std::vector<imm> &);
+
+      public:
+        static bool try_offset(const offset_ptr &source, std::intptr_t offset);
+        static bool try_redirect(const offset_ptr &source, std::intptr_t target);
+
+      public:
+        static std::vector<std::uint8_t> make_ptr(std::uintptr_t address);
+        static std::vector<std::uint8_t> make_jmp(std::uintptr_t source, std::uintptr_t target, bool near = false);
     };
 
     hook_base::hook_base() : m_impl(std::make_unique<impl>()) {}
 
     hook_base::~hook_base()
     {
-        if (!m_impl)
+        if (!m_impl || !m_impl->source_page)
         {
             return;
         }
@@ -68,7 +83,6 @@ namespace lime
 
     hook_base::rtn_t hook_base::create(std::uintptr_t source, std::uintptr_t target)
     {
-        auto rtn  = std::unique_ptr<hook_base>(new hook_base);
         auto page = page::at(source);
 
         if (!page)
@@ -76,115 +90,132 @@ namespace lime
             return tl::make_unexpected(hook_error::bad_page);
         }
 
-        auto start = instruction::unsafe(source);
-
-        if (auto follow = start.follow(); follow)
+        if (!(page->prot() & protection::read))
         {
-            start = std::move(follow.value());
-            page.emplace(page::unsafe(start));
+            return tl::make_unexpected(hook_error::bad_prot);
         }
 
-        rtn->m_impl->source      = std::make_unique<address>(address::unsafe(std::move(start)));
-        rtn->m_impl->source_page = std::make_unique<lime::page>(std::move(page.value()));
+        auto start = instruction::at(source);
+
+        if (!start)
+        {
+            return tl::make_unexpected(hook_error::bad_func);
+        }
+
+        if (auto follow = start->follow(); follow)
+        {
+            start = std::move(follow.value());
+            page.emplace(page::unsafe(start->addr()));
+        }
+
+        auto rtn = std::unique_ptr<hook_base>(new hook_base);
+
         rtn->m_impl->target      = target;
+        rtn->m_impl->source_page = std::make_unique<lime::page>(std::move(page.value()));
+        rtn->m_impl->source      = std::make_unique<address>(address::unsafe(start->addr()));
 
-        /*
-        # We will now try to create a springboard and check how many bytes of the prologue we'll have to overwrite
-        # ├ Worst-Case
-        # │  └ We can't allocate a spring-board, size will be size::jmp_far
-        # │
-        # └ Best-Case
-        #    └ We can allocate a spring-board, size will be size::jmp_near
+        const auto spring_board = rtn->m_impl->create_springboard();
+        const auto near         = rtn->m_impl->create_trampoline(true, spring_board);
 
-        # The springboard is used to jump to the target function.
-        # The idea here is just that our module is probably too far away from our target, so we just use an absolute jmp
-        # for simplicity sake. As we wan't to override as little instructions as possible in the source function we use
-        # the springboard.
-        */
-
-        const auto prologue_size = rtn->m_impl->create_springboard();
-        rtn->m_impl->prologue    = rtn->m_impl->source->copy(prologue_size);
-
-        /*
-        # We will now try to relocate the function prologue to our trampoline
-        */
-
-        if (!rtn->m_impl->build_trampoline())
+        if (!near && !rtn->m_impl->create_trampoline(false, spring_board))
         {
             return tl::make_unexpected(hook_error::relocate);
         }
 
-        if (rtn->m_impl->spring_board)
+        const auto destination = spring_board ? rtn->m_impl->spring_board->start() : target;
+
+        auto jump            = impl::make_jmp(start->addr(), destination, spring_board);
+        const auto remaining = rtn->m_impl->prologue.size() - jump.size();
+
+        if (remaining > 0)
         {
-            auto jmp = impl::make_jmp(rtn->m_impl->spring_board->start(), target);
-            address::unsafe(rtn->m_impl->spring_board->start()).write(jmp.data(), jmp.size());
+            std::vector<std::uint8_t> padding(remaining, 0x90);
+            std::ranges::move(padding, std::back_inserter(jump));
         }
 
-        /*
-        # Now we'll jump to the springboard/target
-        */
-
-        const auto destination = rtn->m_impl->spring_board ? rtn->m_impl->spring_board->start() : target;
-        const auto near        = static_cast<bool>(rtn->m_impl->spring_board);
-
-        auto jmp = impl::make_jmp(*rtn->m_impl->source, destination, near);
-
-        if (auto remaining = static_cast<int>(prologue_size - jmp.size()); remaining > 0)
-        {
-            std::vector<std::uint8_t> nop(remaining, 0x90);
-            jmp.insert(jmp.end(), nop.begin(), nop.end());
-        }
-
-        static constexpr auto prot = protection::read | protection::write | protection::execute;
-
-        if (!rtn->m_impl->source_page->protect(prot))
+        if (!rtn->m_impl->source_page->protect(rwx))
         {
             return tl::make_unexpected(hook_error::protect);
         }
 
-        rtn->m_impl->source->write(jmp.data(), jmp.size());
+        rtn->m_impl->source->write(jump.data(), jump.size());
         rtn->m_impl->source_page->restore();
 
         return rtn;
     }
 
-    std::size_t hook_base::impl::create_springboard()
+    std::size_t hook_base::impl::required_prologue_size(bool near) const
     {
-        static constexpr auto prot = protection::read | protection::write | protection::execute;
-        spring_board               = page::allocate<alloc_policy::nearby>(*source, size::jmp_far, prot);
+        auto required = near ? size::jmp_near : size::jmp_far;
+        auto rtn      = 0u;
 
-        const auto required_size = spring_board ? size::jmp_near : size::jmp_far;
-        auto rtn                 = 0u;
+        auto inst = instruction::unsafe(source->addr());
 
-        auto current = instruction::unsafe(*source);
-
-        while (required_size > rtn)
+        while (rtn < required)
         {
-            rtn += current.size();
-
-            auto next = current.next();
-            assert(next && "Failed to decode prologue instruction");
-
-            current = std::move(next.value());
+            rtn += inst.size();
+            inst = std::move(inst.next().value());
         }
 
         return rtn;
     }
 
-    bool hook_base::impl::build_trampoline()
+    std::size_t hook_base::impl::estimate_trampoline_size(bool near) const
     {
-        static constexpr auto prot = protection::read | protection::write | protection::execute;
+        auto rtn        = prologue.size() + (near ? size::jmp_near : size::jmp_far);
+        const auto addr = reinterpret_cast<std::uintptr_t>(prologue.data());
 
-        const auto near = !can_relocate_far();
-        const auto size = estimate_size(near);
+        for (auto i = 0u; prologue.size() > i;)
+        {
+            auto current = instruction::unsafe(addr + i);
+            i += current.size();
+
+            if (!current.relative())
+            {
+                continue;
+            }
+
+            if (!current.branching())
+            {
+                rtn += sizeof(std::uintptr_t);
+                continue;
+            }
+
+            rtn += (near ? size::jmp_near : size::jmp_far);
+        }
+
+        return rtn;
+    }
+
+    bool hook_base::impl::create_springboard()
+    {
+        spring_board = page::allocate(source->addr(), size::jmp_far, rwx);
+
+        if (!spring_board)
+        {
+            return false;
+        }
+
+        auto content = make_jmp(spring_board->start(), target, false);
+        address::unsafe(spring_board->start()).write(content.data(), content.size());
+
+        return true;
+    }
+
+    bool hook_base::impl::create_trampoline(bool near, bool spring_board)
+    {
+        prologue = source->copy(required_prologue_size(spring_board));
+
+        const auto size = estimate_trampoline_size(near);
+        trampoline.reset();
 
         if (near)
         {
-            trampoline = page::allocate<alloc_policy::nearby>(*source, size, prot);
+            trampoline = page::allocate(source->addr(), size, rwx);
         }
         else
         {
-            trampoline = page::allocate(size, prot);
+            trampoline = page::allocate(size, rwx);
         }
 
         if (!trampoline)
@@ -192,166 +223,52 @@ namespace lime
             return false;
         }
 
-        /*
-        # First, we write the prologue to our trampoline
-        */
+        auto content = prologue;
+        content.reserve(size);
 
-        const auto skip      = spring_board ? size::jmp_near : size::jmp_far;
-        const auto jump_back = impl::make_jmp(trampoline->start() + prologue.size(), source->addr() + skip, near);
+        const auto original = source->addr() + prologue.size();
+        std::ranges::move(make_jmp(trampoline->start() + prologue.size(), original, near), std::back_inserter(content));
 
-        auto body = prologue;
-        body.insert(body.end(), jump_back.begin(), jump_back.end());
+        const auto start = reinterpret_cast<std::uintptr_t>(content.data());
 
-        address::unsafe(trampoline->start()).write(body.data(), body.size());
-
-        /*
-        # Next, we fix-up the relocated instructions
-        */
-
-        const auto prologue_end = address::unsafe(trampoline->start() + prologue.size() + size::jmp_far);
-        std::vector<std::uint8_t> jump_table;
-
-        auto i = 0u;
-
-        while (prologue.size() > i)
+        for (auto i = 0u, inst_size = 0u; prologue.size() > i; i += inst_size)
         {
-            auto current = instruction::unsafe(trampoline->start() + i);
-            i += current.size();
+            auto inst = instruction::unsafe(start + i);
+            inst_size = inst.size();
 
-            if (!current.relative())
+            if (!inst.relative())
             {
                 continue;
             }
 
-            /*
-            # We now calculate the difference between the old instructions location and its new location
-            # Using this, we can try to correct relative instructions, by subtracting the difference
-            # from their relative-amount.
-            */
+            const auto original_rip    = source->addr() + i;
+            const auto original_target = inst.absolute(original_rip).value();
 
-            const auto original_rip = static_cast<std::int64_t>(*source) + i;
-            const auto difference   = static_cast<std::int64_t>(current.addr() + current.size()) - original_rip;
+            const auto rip           = trampoline->start() + i;
+            const auto reloc_address = trampoline->start() + content.size();
 
-            const auto disp = current.displacement();
+            const auto new_offset = reloc_address - rip - inst_size;
+            auto offset           = offset_of(inst);
 
-            if (disp.size > 0 && !try_offset(disp, current, difference))
+            if (!offset)
             {
                 return false;
             }
 
-            const auto immediates = current.immediates();
-
-            for (const auto &imm : immediates)
-            {
-                if (imm.size <= 0 || !imm.relative)
-                {
-                    continue;
-                }
-
-                if (try_offset(imm, current, difference))
-                {
-                    continue;
-                }
-
-                if (!current.branching())
-                {
-                    return false;
-                }
-
-                /*
-                # We failed to offset, thus we have to fall back to a jump-table at the end of the trampoline
-                */
-
-                const auto imm_value =
-                    std::visit([](auto amount) { return static_cast<std::int64_t>(amount); }, imm.amount);
-
-                const auto rel_jump = (prologue_end.addr() - current.addr() - current.size()) + jump_table.size();
-                const auto offset   = -imm_value + static_cast<std::int64_t>(rel_jump);
-
-                const auto destination = original_rip + imm_value;
-                const auto table_entry = impl::make_jmp(current, destination, near);
-
-                jump_table.insert(jump_table.end(), table_entry.begin(), table_entry.end());
-
-                if (!try_offset(imm, current, -offset))
-                {
-                    return false;
-                }
-            }
-        }
-
-        address::unsafe(prologue_end).write(jump_table.data(), jump_table.size());
-
-        return true;
-    }
-
-    template <typename T>
-    bool hook_base::impl::try_offset(std::uintptr_t address, std::int64_t amount)
-    {
-        auto &original = *reinterpret_cast<T *>(address);
-
-        const auto first  = original - static_cast<T>(amount);
-        const auto second = static_cast<std::int64_t>(original) - amount;
-
-        if (first != second)
-        {
-            return false;
-        }
-
-        original -= amount;
-        return true;
-    }
-
-    bool hook_base::impl::try_offset(imm value, std::uintptr_t address, std::int64_t amount)
-    {
-        const auto is_signed = std::holds_alternative<std::int64_t>(value.amount);
-        const auto target    = address + value.offset;
-
-        switch (value.size)
-        {
-        case 8:
-            return is_signed ? try_offset<std::int8_t>(target, amount) : try_offset<std::uint8_t>(target, amount);
-        case 16:
-            return is_signed ? try_offset<std::int16_t>(target, amount) : try_offset<std::uint16_t>(target, amount);
-        case 32:
-            return is_signed ? try_offset<std::int32_t>(target, amount) : try_offset<std::uint32_t>(target, amount);
-        }
-
-        return false;
-    }
-
-    bool hook_base::impl::try_offset(disp value, std::uintptr_t address, std::int64_t amount)
-    {
-        const auto target = address + value.offset;
-
-        switch (value.size)
-        {
-        case 8:
-            return try_offset<std::int8_t>(target, amount);
-        case 16:
-            return try_offset<std::int16_t>(target, amount);
-        case 32:
-            return try_offset<std::int32_t>(target, amount);
-        }
-
-        return false;
-    }
-
-    bool hook_base::impl::can_relocate_far()
-    {
-        auto i = 0u;
-
-        while (prologue.size() > i)
-        {
-            const auto current = instruction::unsafe(reinterpret_cast<std::uintptr_t>(prologue.data() + i));
-            i += current.size();
-
-            if (!current.relative())
+            if (try_offset(offset.value(), static_cast<std::intptr_t>(rip - original_rip)))
             {
                 continue;
             }
+            else if (!inst.branching())
+            {
+                std::ranges::move(make_ptr(original_target), std::back_inserter(content));
+            }
+            else
+            {
+                std::ranges::move(make_jmp(reloc_address, original_target, false), std::back_inserter(content));
+            }
 
-            if (current.branching())
+            if (try_redirect(offset.value(), static_cast<std::intptr_t>(new_offset)))
             {
                 continue;
             }
@@ -359,48 +276,145 @@ namespace lime
             return false;
         }
 
+        if (content.size() > size)
+        {
+            return false;
+        }
+
+        address::unsafe(trampoline->start()).write(content.data(), content.size());
+
         return true;
     }
 
-    std::size_t hook_base::impl::estimate_size(bool near)
+    std::optional<offset_ptr> hook_base::impl::offset_of(const instruction &source)
     {
-        const auto size = size::jmp_far + prologue.size();
+        const auto disp = source.displacement();
 
-        auto i = 0u;
-
-        while (prologue.size() > i)
+        if (auto offset = offset_of(source.addr(), disp); offset)
         {
-            const auto current = instruction::unsafe(reinterpret_cast<std::uintptr_t>(prologue.data() + i));
-            i += current.size();
+            return offset;
+        }
 
-            if (!current.relative())
+        if (auto offset = offset_of(source.addr(), source.immediates()); offset)
+        {
+            return offset;
+        }
+
+        return std::nullopt;
+    }
+
+    std::optional<offset_ptr> hook_base::impl::offset_of(std::uintptr_t source, const disp &disp)
+    {
+        const auto addr = source + disp.offset;
+
+        switch (disp.size)
+        {
+        case 8:
+            return reinterpret_cast<std::int8_t *>(addr);
+        case 16:
+            return reinterpret_cast<std::int16_t *>(addr);
+        case 32:
+            return reinterpret_cast<std::int32_t *>(addr);
+        }
+
+        return std::nullopt;
+    }
+
+    std::optional<offset_ptr> hook_base::impl::offset_of(std::uintptr_t source, const std::vector<imm> &immediates)
+    {
+        for (const auto &imm : immediates)
+        {
+            if (imm.size <= 0 || !imm.relative)
             {
                 continue;
             }
 
-            i += near ? size::jmp_near : size::jmp_far;
+            const auto is_signed = std::holds_alternative<std::int64_t>(imm.amount);
+            const auto addr      = source + imm.offset;
+
+            switch (imm.size)
+            {
+            case 8:
+                return is_signed ? offset_ptr{reinterpret_cast<std::int8_t *>(addr)}
+                                 : offset_ptr{reinterpret_cast<std::uint8_t *>(addr)};
+            case 16:
+                return is_signed ? offset_ptr{reinterpret_cast<std::int16_t *>(addr)}
+                                 : offset_ptr{reinterpret_cast<std::uint16_t *>(addr)};
+            case 32:
+                return is_signed ? offset_ptr{reinterpret_cast<std::int32_t *>(addr)}
+                                 : offset_ptr{reinterpret_cast<std::uint32_t *>(addr)};
+            }
         }
 
-        return size;
+        return std::nullopt;
     }
 
-    std::vector<std::uint8_t> hook_base::impl::make_jmp(std::uintptr_t from, std::uintptr_t to, bool near)
+    bool hook_base::impl::try_offset(const offset_ptr &source, std::intptr_t offset)
+    {
+        auto visitor = [&offset]<typename T>(T *source)
+        {
+            auto desired = static_cast<std::intptr_t>(*source) - offset;
+            auto actual  = *source - static_cast<T>(offset);
+
+            if (static_cast<std::intptr_t>(actual) != desired)
+            {
+                return false;
+            }
+
+            *source = actual;
+
+            return true;
+        };
+
+        return std::visit(visitor, source);
+    }
+
+    bool hook_base::impl::try_redirect(const offset_ptr &source, std::intptr_t target)
+    {
+        auto visitor = [&target]<typename T>(T *source)
+        {
+            if (std::numeric_limits<T>::max() < target)
+            {
+                return false;
+            }
+
+            if (std::numeric_limits<T>::min() > target)
+            {
+                return false;
+            }
+
+            *source = static_cast<T>(target);
+
+            return true;
+        };
+
+        return std::visit(visitor, source);
+    }
+
+    std::vector<std::uint8_t> hook_base::impl::make_ptr(std::uintptr_t address)
+    {
+        std::vector<std::uint8_t> rtn(sizeof(std::uintptr_t));
+        *reinterpret_cast<std::uintptr_t *>(rtn.data()) = address;
+
+        return rtn;
+    }
+
+    std::vector<std::uint8_t> hook_base::impl::make_jmp(std::uintptr_t source, std::uintptr_t target, bool near)
     {
         std::vector<std::uint8_t> rtn;
 
         if (near || arch == architecture::x86)
         {
-            rtn.insert(rtn.end(), {0xE9});
-
+            rtn = {0xE9};
             rtn.resize(rtn.size() + sizeof(std::int32_t));
-            *reinterpret_cast<std::int32_t *>(rtn.data() + 1) = static_cast<std::int32_t>(to - from - size::jmp_near);
+
+            auto relative = static_cast<std::int32_t>(target - source - size::jmp_near);
+            *reinterpret_cast<std::int32_t *>(rtn.data() + 1) = relative;
         }
         else
         {
-            rtn.insert(rtn.end(), {0xFF, 0x25, 0x00, 0x00, 0x00, 0x00});
-
-            rtn.resize(rtn.size() + sizeof(std::uintptr_t));
-            *reinterpret_cast<std::uintptr_t *>(rtn.data() + 6) = to;
+            rtn = {0xFF, 0x25, 0x00, 0x00, 0x00, 0x00};
+            std::ranges::move(make_ptr(target), std::back_inserter(rtn));
         }
 
         return rtn;
