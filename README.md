@@ -57,7 +57,7 @@ This should be used for compatibility with wine as it currently does not support
   ```cmake
   CPMFindPackage(
     NAME           lime
-    VERSION        3.0
+    VERSION        5.0
     GIT_REPOSITORY "https://github.com/Curve/lime"
   )
   ```
@@ -66,7 +66,7 @@ This should be used for compatibility with wine as it currently does not support
   ```cmake
   include(FetchContent)
 
-  FetchContent_Declare(lime GIT_REPOSITORY "https://github.com/Curve/lime" GIT_TAG v3.0)
+  FetchContent_Declare(lime GIT_REPOSITORY "https://github.com/Curve/lime" GIT_TAG v5.0)
   FetchContent_MakeAvailable(lime)
 
   target_link_libraries(<target> cr::lime)
