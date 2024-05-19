@@ -65,7 +65,7 @@ namespace lime
 
     std::optional<instruction> instruction::prev() const
     {
-        auto start = m_impl->address - max_instruction_size;
+        const auto start = m_impl->address - max_instruction_size;
         std::optional<instruction> last;
 
         for (auto current = start; current < m_impl->address; current++)
@@ -77,7 +77,7 @@ namespace lime
                 continue;
             }
 
-            auto next = instruction->next();
+            const auto next = instruction->next();
 
             if (!next || next->addr() != m_impl->address)
             {
@@ -150,7 +150,7 @@ namespace lime
 
     std::strong_ordering instruction::operator<=>(const instruction &other) const
     {
-        auto address = other.addr();
+        const auto address = other.addr();
 
         if (address > m_impl->address)
         {
@@ -177,7 +177,7 @@ namespace lime
 
     std::optional<instruction> instruction::at(std::uintptr_t address)
     {
-        auto page = page::at(address);
+        const auto page = page::at(address);
 
         if (!page || !(page->prot() & protection::read))
         {
