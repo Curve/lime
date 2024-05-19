@@ -213,7 +213,10 @@ namespace lime
 
             int hex{};
 
-            [[maybe_unused]] auto result = std::from_chars(current.begin(), current.end(), hex, 16);
+            const auto *begin = current.data();
+            const auto *end   = begin + current.size();
+
+            [[maybe_unused]] auto result = std::from_chars(begin, end, hex, 16);
             assert((result.ec == std::errc{}) && "Failed to convert given character");
 
             mask.push_back('x');
