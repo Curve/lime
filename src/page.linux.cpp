@@ -173,8 +173,12 @@ namespace lime
     {
         auto pages = page::pages();
 
-        auto it = std::ranges::find_if(pages | std::ranges::views::reverse, [&](const auto &page)
-                                       { return address >= page.start() && address <= page.end(); });
+        auto pred = [&](const auto &page)
+        {
+            return address >= page.start() && address <= page.end();
+        };
+
+        auto it = std::ranges::find_if(std::views::reverse(pages), pred);
 
         if (it == pages.rend())
         {
