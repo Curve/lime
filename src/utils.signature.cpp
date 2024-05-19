@@ -2,10 +2,11 @@
 
 #include "page.hpp"
 
-#include <cstring>
-#include <sstream>
+#include <cassert>
+#include <charconv>
 
-#include <algorithm>
+#include <string>
+#include <ranges>
 
 namespace lime
 {
@@ -200,35 +201,35 @@ namespace lime
         return rtn;
     }
 
-    signature signature::from(const std::string &ida_pattern, protection required)
+    signature signature::from(std::string_view ida_pattern, protection required)
     {
-        signature rtn;
+        auto split = std::views::split(ida_pattern, ' ');
 
-        rtn.m_impl->required = required;
+        std::string mask;
+        std::string pattern;
 
-        auto pattern      = std::stringstream{ida_pattern};
-        const auto spaces = std::ranges::count_if(ida_pattern, [](char c) { return c == ' '; });
-
-        std::string current;
-        current.reserve(spaces + 1);
-
-        while (std::getline(pattern, current, ' '))
+        for (const auto &r : split)
         {
-            if (current.find('?') != std::string::npos)
+            std::string_view current{r.begin(), r.end()};
+
+            if (current.starts_with('?'))
             {
-                rtn.m_impl->mask.push_back('?');
-                rtn.m_impl->pattern.push_back(0);
+                mask.push_back('?');
+                pattern.push_back(0);
 
                 continue;
             }
 
-            auto hex = std::stoul(current, nullptr, 16);
+            int hex{};
 
-            rtn.m_impl->mask.push_back('x');
-            rtn.m_impl->pattern.push_back(static_cast<char>(hex));
+            [[maybe_unused]] auto result = std::from_chars(current.begin(), current.end(), hex, 16);
+            assert((result.ec == std::errc{}) && "Failed to convert given character");
+
+            mask.push_back('x');
+            pattern.push_back(static_cast<char>(hex));
         }
 
-        return rtn;
+        return from(pattern.c_str(), mask, required);
     }
 
     signature signature::from(const char *pattern, std::string mask, protection required)
@@ -237,7 +238,7 @@ namespace lime
 
         rtn.m_impl->pattern  = {pattern, mask.size()};
         rtn.m_impl->mask     = std::move(mask);
-        rtn.m_impl->required = required;
+        rtn.m_impl->required = required | protection::read;
 
         return rtn;
     }

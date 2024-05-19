@@ -3,11 +3,12 @@
 #include "../page.hpp"
 #include "../module.hpp"
 
-#include <string>
 #include <memory>
-
 #include <cstdint>
 #include <optional>
+
+#include <string>
+#include <string_view>
 
 namespace lime
 {
@@ -45,7 +46,7 @@ namespace lime
         [[nodiscard]] std::vector<std::uintptr_t> find_all(const module &) const;
 
       public:
-        static signature from(const std::string &ida_pattern, protection required = protection::none);
-        static signature from(const char *pattern, std::string mask, protection required = protection::none);
+        static signature from(std::string_view ida_pattern, protection required = protection::read);
+        static signature from(const char *pattern, std::string mask, protection required = protection::read);
     };
 } // namespace lime
