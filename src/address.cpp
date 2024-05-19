@@ -2,8 +2,10 @@
 
 #include "page.hpp"
 
-#include <cstring>
 #include <iterator>
+#include <algorithm>
+
+#include <cstring>
 
 namespace lime
 {
@@ -55,7 +57,7 @@ namespace lime
         const auto *src = reinterpret_cast<std::uint8_t *>(m_impl->address);
 
         std::vector<std::uint8_t> rtn;
-        std::copy(src, src + size, std::back_inserter(rtn));
+        std::ranges::copy(src, src + size, std::back_inserter(rtn));
 
         return rtn;
     }
