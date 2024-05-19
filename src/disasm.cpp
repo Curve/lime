@@ -10,8 +10,6 @@
 
 namespace lime
 {
-    //? Max Instruction size on x86_64
-
     auto get_decoder = []()
     {
         ZydisDecoder decoder;
@@ -132,7 +130,7 @@ namespace lime
 
         for (const auto &imm : inst.raw.imm)
         {
-            auto item = lime::imm{};
+            lime::imm item{};
 
             item.size     = imm.size;
             item.offset   = imm.offset;
