@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <charconv>
+#include <algorithm>
 
 #include <string>
 #include <ranges>
