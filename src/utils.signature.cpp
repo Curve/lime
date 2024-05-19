@@ -42,7 +42,7 @@ namespace lime
                 continue;
             }
 
-            auto &current = *reinterpret_cast<char *>(address + j);
+            const auto &current = *reinterpret_cast<char *>(address + j);
 
             if (current == pattern[j])
             {
@@ -74,17 +74,12 @@ namespace lime
 
     std::optional<std::uintptr_t> signature::find(const page &page) const
     {
-        if (m_impl->required != protection::none && !(page.prot() & m_impl->required))
+        if (!(page.prot() & m_impl->required))
         {
             return std::nullopt;
         }
 
-        if (!(page.prot() & protection::read))
-        {
-            return std::nullopt;
-        }
-
-        auto end = page.end() - m_impl->mask.size();
+        const auto end = page.end() - m_impl->mask.size();
 
         for (auto i = page.start(); end > i; i++)
         {
@@ -101,7 +96,7 @@ namespace lime
 
     std::optional<std::uintptr_t> signature::find(const module &module) const
     {
-        auto end = module.end() - m_impl->mask.size();
+        const auto end = module.end() - m_impl->mask.size();
 
         for (auto i = module.start(); end > i; i++)
         {
@@ -138,7 +133,7 @@ namespace lime
                 continue;
             }
 
-            rtn.insert(rtn.end(), found.begin(), found.end());
+            std::ranges::move(found, std::back_inserter(rtn));
         }
 
         return rtn;
@@ -148,17 +143,12 @@ namespace lime
     {
         std::vector<std::uintptr_t> rtn;
 
-        if (m_impl->required != protection::none && !(page.prot() & m_impl->required))
+        if (!(page.prot() & m_impl->required))
         {
             return rtn;
         }
 
-        if (!(page.prot() & protection::read))
-        {
-            return rtn;
-        }
-
-        auto end = page.end() - m_impl->mask.size();
+        const auto end = page.end() - m_impl->mask.size();
 
         for (auto i = page.start(); end > i; i++)
         {
@@ -177,11 +167,11 @@ namespace lime
     {
         std::vector<std::uintptr_t> rtn;
 
-        auto end = module.end() - m_impl->mask.size();
+        const auto end = module.end() - m_impl->mask.size();
 
         for (auto i = module.start(); end > i; i++)
         {
-            auto page = page::at(i);
+            const auto page = page::at(i);
 
             if (!page)
             {
@@ -192,7 +182,7 @@ namespace lime
 
             if (!found.empty())
             {
-                rtn.insert(rtn.end(), found.begin(), found.end());
+                std::ranges::move(found, std::back_inserter(rtn));
             }
 
             i += page->size() - 1;
