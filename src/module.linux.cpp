@@ -53,10 +53,9 @@ namespace lime
         auto fn = [&](auto name)
         {
             auto sym = symbol(name);
-            auto str = std::string{name};
 
             rtn.emplace_back(lime::symbol{
-                .name    = std::move(str),
+                .name    = std::string{name},
                 .address = sym,
             });
 
@@ -155,12 +154,12 @@ namespace lime
     {
         auto all = modules();
 
-        auto fn = [&](const auto &item)
+        auto pred = [&](const auto &item)
         {
             return item.name().find(name) != std::string_view::npos;
         };
 
-        auto rtn = std::ranges::find_if(all, fn);
+        auto rtn = std::ranges::find_if(all, pred);
 
         if (rtn == all.end())
         {
