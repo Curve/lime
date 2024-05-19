@@ -44,7 +44,7 @@ suite<"Address"> address_suite = []
     {
         expect(eq(back_address.has_value(), true));
 
-        for (const auto &value : data | std::ranges::views::reverse)
+        for (const auto &value : std::views::reverse(data))
         {
             auto &current = back_address.value();
 
