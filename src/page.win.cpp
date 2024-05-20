@@ -236,7 +236,7 @@ namespace lime
 
         const auto granularity = si.dwAllocationGranularity;
 
-        auto min = where - std::numeric_limits<std::int32_t>::max();
+        auto min = static_cast<std::intptr_t>(where) - std::numeric_limits<std::int32_t>::max();
         auto max = where + std::numeric_limits<std::int32_t>::max();
 
         min += (granularity - (min % granularity));
