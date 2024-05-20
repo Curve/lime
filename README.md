@@ -1,20 +1,25 @@
 <p align="center">
-    <img src="assets/lime.svg" width=400>
+  <img src="assets/lime.svg" width="400">
 </p>
 
 ## 👋 Introduction
 Lime is a *cross-platform* library that is focused on game modding and tries to provide you with useful features for your journey.
 
-
 ## 🗒️ Features
 - Detours
   - x86/x86-64
   - Lambda support
-  - Calling Convention support _(Even for lambdas!)_
+  - (Cross-Platform) Calling Convention support _(for lambdas!)_
 - Instruction
-  > Allows to work with instructions (i.e. follow jumps/calls, ...)
+  - Get next / prev instruction
+  - Get immediates, displacement, size, mnemonic
+  - Calculate absolute target _(follow relative instructions...)_
 - Memory Pages
-  > Easily allocate and work with memory pages
+  - Allocate pages
+    - Anywhere
+    - Exactly at specified address
+    - In ±2GB range of specified address
+  - Read / Write / Restore protection
 - Module
   - Iterate Loaded Modules
   - Iterate Symbols
@@ -24,8 +29,9 @@ Lime is a *cross-platform* library that is focused on game modding and tries to 
 - Signature Scanner
   - Supports Traditional & IDA Signatures
 - Cross-Platform Entrypoint
-- Proxy-DLL Generation _(For MinGW)_
+- _[MinGW]_ Proxy-DLL Generation
 
+> [!NOTE]  
 > Lime follows `RAII` so you won't have to care about manually cleaning anything up (i.e. when allocating a page).
 
 ## ⚙️ Configuration
@@ -79,3 +85,16 @@ https://github.com/Curve/lime/blob/7de073bd4736900193f6af5c543a3cf62e6f1a73/test
 https://github.com/Curve/lime/blob/9ee66d3cc9e8976d5d8a40856d7ee5a09d32c415/tests/hook.test.cpp#L44-L52
 
 > For more examples see [tests](tests/)
+
+## 🌐 Who's using Lime
+
+<div align="center">
+<br/>
+
+<img src="https://raw.githubusercontent.com/simplytest/profuis-patch/master/data/logo.png" width="80" />
+
+[profuis-patch](https://github.com/simplytest/profuis-patch)
+
+</div>
+
+> [Extend the list!](https://github.com/Curve/lime/issues/new)
