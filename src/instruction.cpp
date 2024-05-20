@@ -63,10 +63,14 @@ namespace lime
         return disasm::immediates(m_impl->address);
     }
 
+    std::optional<instruction> instruction::next() const
+    {
+        return *this + size();
+    }
+
     std::optional<instruction> instruction::prev() const
     {
         const auto start = m_impl->address - max_instruction_size;
-        std::optional<instruction> last;
 
         for (auto current = start; current < m_impl->address; current++)
         {
@@ -84,16 +88,10 @@ namespace lime
                 continue;
             }
 
-            last.emplace(std::move(instruction.value()));
-            break;
+            return instruction;
         }
 
-        return last;
-    }
-
-    std::optional<instruction> instruction::next() const
-    {
-        return *this + size();
+        return std::nullopt;
     }
 
     std::optional<instruction> instruction::next(std::size_t mnemonic) const
