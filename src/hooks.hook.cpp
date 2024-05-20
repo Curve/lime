@@ -373,12 +373,15 @@ namespace lime
     {
         auto visitor = [&target]<typename T>(T *source)
         {
-            if (std::numeric_limits<T>::max() < target)
+            static constexpr auto max = static_cast<std::intptr_t>(std::numeric_limits<T>::max());
+            static constexpr auto min = static_cast<std::intptr_t>(std::numeric_limits<T>::min());
+
+            if (max < target)
             {
                 return false;
             }
 
-            if (std::numeric_limits<T>::min() > target)
+            if (min > target)
             {
                 return false;
             }
