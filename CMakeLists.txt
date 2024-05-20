@@ -35,6 +35,8 @@ if (NOT MSVC)
   else()
     target_compile_options(${PROJECT_NAME} PUBLIC -Wno-unknown-attributes)
   endif()
+
+  target_compile_options(${PROJECT_NAME} PRIVATE -Wno-unknown-warning-option)
 endif()
 
 # --------------------------------------------------------------------------------------------------------
