@@ -67,8 +67,8 @@ namespace lime
         [[nodiscard]] std::vector<imm> immediates() const;
 
       public:
-        [[nodiscard]] std::optional<instruction> prev() const;
         [[nodiscard]] std::optional<instruction> next() const;
+        [[lime::inaccurate]] [[nodiscard]] std::optional<instruction> prev() const;
 
       public:
         [[nodiscard]] std::optional<instruction> follow() const;

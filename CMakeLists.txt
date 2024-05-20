@@ -25,8 +25,16 @@ add_library(cr::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 20 CXX_EXTENSIONS OFF CXX_STANDARD_REQUIRED ON)
 
-if (UNIX AND PROJECT_IS_TOP_LEVEL)
-  target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
+if (NOT MSVC)
+  if (PROJECT_IS_TOP_LEVEL AND NOT CMAKE_CXX_SIMULATE_ID MATCHES "MSVC")
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic -Werror -pedantic -pedantic-errors -Wfatal-errors)
+  endif()
+
+  if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
+    target_compile_options(${PROJECT_NAME} PUBLIC -Wno-attributes=lime::)
+  else()
+    target_compile_options(${PROJECT_NAME} PUBLIC -Wno-unknown-attributes)
+  endif()
 endif()
 
 # --------------------------------------------------------------------------------------------------------
