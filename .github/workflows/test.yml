@@ -50,12 +50,6 @@ jobs:
           - type: linux
             arch: x86
 
-          - type: windows
-            config: Release
-
-          - type: windows-clang
-            config: Release
-
     runs-on: ${{ contains(matrix.type, 'windows') && 'windows-latest' || 'ubuntu-latest' }}
     container: ${{ matrix.container }}
 

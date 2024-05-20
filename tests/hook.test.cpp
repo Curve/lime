@@ -1,11 +1,15 @@
-#include <lime/hooks/hook.hpp>
 #include <boost/ut.hpp>
+
+#include <lime/hooks/hook.hpp>
+#include <iostream>
 
 using namespace boost::ut;
 using namespace boost::ut::literals;
 
 int test_fn(int param)
 {
+    std::cout << std::format("test_fn({}): called", param) << std::endl;
+
     if (param == 1337)
     {
         return 0;
