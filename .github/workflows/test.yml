@@ -22,9 +22,8 @@ jobs:
             deps: sudo dnf install -y git cmake gcc gcc-c++ ninja-build
 
           - type: mingw
-            run-tests: false
-            container: archlinux:base-devel
-            deps: pacman --noconfirm -Syu cmake gcc git make mingw-w64
+            container: archlinux:multilib-devel
+            deps: pacman --noconfirm -Syyu cmake gcc git make mingw-w64 wine
 
           - type: mingw
             arch: x86
@@ -47,17 +46,15 @@ jobs:
             arch: x64
             cmake_args: -T ClangCL -A x64
 
-          - type: windows-clang
-            run-tests: false
-            config: Release
-
-          - type: windows
-            run-tests: false
-            config: Release
-
         exclude:
           - type: linux
             arch: x86
+
+          - type: windows
+            config: Release
+
+          - type: windows-clang
+            config: Release
 
     runs-on: ${{ contains(matrix.type, 'windows') && 'windows-latest' || 'ubuntu-latest' }}
     container: ${{ matrix.container }}
@@ -77,6 +74,12 @@ jobs:
           cmake --build build --config ${{ matrix.config }}
 
       - name: 🔬 Run Tests
-        if: ${{ matrix.run-tests != false }}
+        if: ${{ matrix.type != 'mingw' }}
         run: |
           ctest --test-dir build/tests -C ${{ matrix.config }} --verbose
+
+      - name: 🔬 Run Tests (Wine)
+        if: ${{ matrix.type == 'mingw' }}
+        run: |
+          mkdir prefix
+          WINEPREFIX="$(pwd)/prefix" wine ./build/tests/lime-tests.exe
