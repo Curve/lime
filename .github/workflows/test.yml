@@ -1,0 +1,82 @@
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - "**/*.md"
+
+name: 🧪 Run Tests
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+
+      matrix:
+        arch: [x86, x64]
+        config: [Release, Debug]
+        type: [linux, mingw, windows, windows-clang]
+
+        include:
+          - type: linux
+            container: fedora:38 # g++ on ubuntu latest does not include P2210R2
+            deps: sudo dnf install -y git cmake gcc gcc-c++ ninja-build
+
+          - type: mingw
+            run-tests: false
+            container: archlinux:base-devel
+            deps: pacman --noconfirm -Syu cmake gcc git make mingw-w64
+
+          - type: mingw
+            arch: x86
+            cmake_args: -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-x86.cmake
+          - type: mingw
+            arch: x64
+            cmake_args: -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-x64.cmake
+
+          - type: windows
+            arch: x86
+            cmake_args: -A Win32
+          - type: windows
+            arch: x64
+            cmake_args: -A x64
+
+          - type: windows-clang
+            arch: x86
+            cmake_args: -T ClangCL -A Win32
+          - type: windows-clang
+            arch: x64
+            cmake_args: -T ClangCL -A x64
+
+          - type: windows-clang
+            run-tests: false
+            config: Release
+
+          - type: windows
+            run-tests: false
+            config: Release
+
+        exclude:
+          - type: linux
+            arch: x86
+
+    runs-on: ${{ contains(matrix.type, 'windows') && 'windows-latest' || 'ubuntu-latest' }}
+    container: ${{ matrix.container }}
+
+    name: "${{ matrix.type }} (💾: ${{ matrix.arch }}, ⚙️: ${{ matrix.config }})"
+
+    steps:
+      - name: 📦 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🧰 Dependencies
+        run: ${{ matrix.deps }}
+
+      - name: 🔧 Compile
+        run: |
+          cmake -B build -Dlime_tests=ON ${{ matrix.cmake_args }}
+          cmake --build build --config ${{ matrix.config }}
+
+      - name: 🔬 Run Tests
+        if: ${{ matrix.run-tests != false }}
+        run: |
+          ctest --test-dir build/tests -C ${{ matrix.config }} --verbose
