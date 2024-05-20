@@ -83,7 +83,22 @@ namespace lime
 
             const auto next = instruction->next();
 
-            if (!next || next->addr() != m_impl->address)
+            if (!next)
+            {
+                continue;
+            }
+
+            if (next->addr() != m_impl->address)
+            {
+                continue;
+            }
+
+            if (next->size() != size())
+            {
+                continue;
+            }
+
+            if (next->mnemonic() != mnemonic())
             {
                 continue;
             }
