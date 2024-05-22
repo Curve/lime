@@ -91,7 +91,7 @@ https://github.com/Curve/lime/blob/9ee66d3cc9e8976d5d8a40856d7ee5a09d32c415/test
 <div align="center">
 <br/>
 
-<img src="https://raw.githubusercontent.com/simplytest/profuis-patch/master/data/logo.png" width="80" />
+<img src="https://raw.githubusercontent.com/simplytest/profuis-patch/master/data/logo.svg" width="80" />
 
 [profuis-patch](https://github.com/simplytest/profuis-patch)
 
