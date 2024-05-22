@@ -66,7 +66,7 @@ namespace lime
             return;
         }
 
-        if (!m_impl->source_page->protect(protection::read | protection::write | protection::execute))
+        if (!m_impl->source_page->protect(rwx))
         {
             assert(false && "Failed to protect original function for restoration");
             return;
