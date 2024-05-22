@@ -2,6 +2,8 @@
 
 #include "hook.hpp"
 
+#include <bit>
+
 namespace lime
 {
     template <detail::function_signature Signature, convention Convention>
@@ -15,8 +17,8 @@ namespace lime
     hook<Signature, Convention>::rtn_t<std::unique_ptr> hook<Signature, Convention>::create(Source source,
                                                                                             Target target)
     {
-        auto source_address = *reinterpret_cast<std::uintptr_t *>(&source);
-        auto target_address = *reinterpret_cast<std::uintptr_t *>(&target);
+        auto source_address = std::bit_cast<std::uintptr_t>(source);
+        auto target_address = std::bit_cast<std::uintptr_t>(target);
 
         auto rtn = hook_base::create(source_address, target_address);
 
