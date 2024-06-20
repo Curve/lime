@@ -95,7 +95,7 @@ namespace lime
         static rtn_t<std::add_pointer_t> create(Source source, Callable &&target);
     };
 
-    template <detail::function_pointer Signature, convention Convention = convention::automatic, typename Callable>
+    template <convention Convention = convention::automatic, detail::function_pointer Signature, typename Callable>
     auto make_hook(Signature source, Callable &&target);
 
     template <typename Signature, convention Convention = convention::automatic, typename Callable>

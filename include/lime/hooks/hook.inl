@@ -57,7 +57,7 @@ namespace lime
         return rtn;
     }
 
-    template <detail::function_pointer Signature, convention Convention, typename Callable>
+    template <convention Convention, detail::function_pointer Signature, typename Callable>
     auto make_hook(Signature source, Callable &&target)
     {
         return hook<std::remove_pointer_t<Signature>, Convention>::create(source, std::forward<Callable>(target));
