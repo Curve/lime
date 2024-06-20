@@ -61,6 +61,14 @@ suite<"Hooks"> hook_suite = []
                        delete hook;
                        return ret;
                    });
+
+    lime::make_hook<int(void *, int), lime::convention::automatic>(0xDEADBEEF,
+                                                                   [&](auto *hook, void *thiz, int param) -> int
+                                                                   {
+                                                                       auto ret = hook->original()(thiz, param);
+                                                                       delete hook;
+                                                                       return ret;
+                                                                   });
 #endif
 
     expect(eq(test_fn(10), 20));

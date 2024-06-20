@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(lime LANGUAGES CXX VERSION 5.1)
+project(lime LANGUAGES CXX VERSION 6.1)
 
 # --------------------------------------------------------------------------------------------------------
 # Library options

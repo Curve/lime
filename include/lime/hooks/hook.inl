@@ -57,15 +57,15 @@ namespace lime
         return rtn;
     }
 
-    template <detail::function_pointer Signature, typename Callable>
+    template <detail::function_pointer Signature, convention Convention, typename Callable>
     auto make_hook(Signature source, Callable &&target)
     {
-        return hook<std::remove_pointer_t<Signature>>::create(source, std::forward<Callable>(target));
+        return hook<std::remove_pointer_t<Signature>, Convention>::create(source, std::forward<Callable>(target));
     }
 
-    template <typename Signature, typename Callable>
+    template <typename Signature, convention Convention, typename Callable>
     auto make_hook(detail::address auto source, Callable &&target)
     {
-        return hook<Signature>::create(source, std::forward<Callable>(target));
+        return hook<Signature, Convention>::create(source, std::forward<Callable>(target));
     }
 } // namespace lime
