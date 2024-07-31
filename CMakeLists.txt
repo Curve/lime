@@ -77,9 +77,9 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
-  NAME           flags
+  NAME           flagpp
   VERSION        2.1
-  GIT_REPOSITORY "https://github.com/Curve/flags"
+  GIT_REPOSITORY "https://github.com/Curve/flagpp"
 )
 
 CPMAddPackage(
