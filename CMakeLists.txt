@@ -34,7 +34,7 @@ if (NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT MATCHES "MSVC")
 endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-  target_compile_options(${PROJECT_NAME} PUBLIC -Wno-attributes=sc::)
+  target_compile_options(${PROJECT_NAME} PUBLIC -Wno-attributes=lime::)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
   target_compile_options(${PROJECT_NAME} PUBLIC /wd5030 /utf-8)
 else()
