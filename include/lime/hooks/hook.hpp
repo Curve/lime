@@ -32,6 +32,7 @@ namespace lime
       public:
         enum class error : std::uint8_t
         {
+            not_unique,
             bad_page,
             bad_prot,
             bad_func,
@@ -46,7 +47,7 @@ namespace lime
         std::unique_ptr<impl> m_impl;
 
       public:
-        basic_hook(impl &&);
+        basic_hook(impl);
 
       public:
         basic_hook(basic_hook &&) noexcept;
@@ -56,7 +57,7 @@ namespace lime
         ~basic_hook();
 
       protected:
-        [[nodiscard]] std::uintptr_t reset();
+        [[nodiscard]] std::uintptr_t reset() &&;
         [[nodiscard]] std::uintptr_t original() const;
 
       protected:
@@ -70,10 +71,9 @@ namespace lime
     struct hook<R(Ts...), U> : public basic_hook
     {
         using basic_hook::error;
+        using basic_hook::res;
 
       public:
-        template <typename T>
-        using res     = std::expected<T, error>;
         using traits  = utils::convention_traits<R(Ts...), U>;
         using pointer = traits::pointer;
 
@@ -82,11 +82,11 @@ namespace lime
         hook(basic_hook &&) noexcept;
 
       public:
-        [[nodiscard]] pointer reset();
+        [[nodiscard]] pointer reset() &&;
         [[nodiscard]] pointer original() const;
 
       public:
-        template <bool Wait = false, typename T, typename = decltype([] {})>
+        template <typename T, typename = decltype([] {})>
         static res<hook *> create(Address auto source, T &&target)
             requires Callable<T, R(hook &, Ts...)>;
 

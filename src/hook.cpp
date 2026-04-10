@@ -57,7 +57,7 @@ namespace lime
         static std::vector<std::uint8_t> make_jmp(std::uintptr_t source, std::uintptr_t target, bool near = false);
     };
 
-    basic_hook::basic_hook(impl &&data) : m_impl(std::make_unique<impl>(std::move(data))) {}
+    basic_hook::basic_hook(impl data) : m_impl(std::make_unique<impl>(std::move(data))) {}
 
     basic_hook::basic_hook(basic_hook &&) noexcept = default;
 
@@ -70,10 +70,10 @@ namespace lime
             return;
         }
 
-        std::ignore = reset();
+        std::ignore = std::move(*this).reset();
     }
 
-    std::uintptr_t basic_hook::reset()
+    std::uintptr_t basic_hook::reset() &&
     {
         if (!m_impl || !m_impl->source_page.protect(rwx))
         {

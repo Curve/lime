@@ -2,9 +2,6 @@
 
 #include "hook.hpp"
 
-#include <thread>
-#include <chrono>
-
 namespace lime
 {
     template <typename, typename>
@@ -40,9 +37,9 @@ namespace lime
     }
 
     template <typename R, typename... Ts, auto U>
-    hook<R(Ts...), U>::pointer hook<R(Ts...), U>::reset()
+    hook<R(Ts...), U>::pointer hook<R(Ts...), U>::reset() &&
     {
-        return reinterpret_cast<pointer>(basic_hook::reset());
+        return reinterpret_cast<pointer>(std::move(*this).basic_hook::reset());
     }
 
     template <typename R, typename... Ts, auto U>
@@ -52,23 +49,20 @@ namespace lime
     }
 
     template <typename R, typename... Ts, auto U>
-    template <bool Wait, typename T, typename>
+    template <typename T, typename>
     basic_hook::res<hook<R(Ts...), U> *> hook<R(Ts...), U>::create(Address auto source, T &&target)
         requires Callable<T, R(hook &, Ts...)>
     {
         static auto data     = detail::data<hook *, T>{};
         static auto callback = [](Ts... params) -> R
         {
-            if constexpr (Wait)
-            {
-                while (!data.hook)
-                {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                }
-            }
-
             return data.callable(*data.hook, std::forward<Ts>(params)...);
         };
+
+        if (data.hook) [[unlikely]]
+        {
+            return std::unexpected{error::not_unique};
+        }
 
         auto rtn = create(source, static_cast<pointer>(&traits::template wrapper<callback>));
 
