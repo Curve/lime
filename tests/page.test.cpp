@@ -30,7 +30,7 @@ suite<"Page"> page_suite = []
 
     auto allocated = lime::page::allocate(100, prot::read | prot::write | prot::execute);
     {
-        expect(neq(allocated, nullptr));
+        expect(allocated.has_value());
 
         auto page = lime::page::at(allocated->start());
 
@@ -43,7 +43,7 @@ suite<"Page"> page_suite = []
 
     auto near = lime::page::allocate(addr, 10, prot::read);
     {
-        expect(neq(near, nullptr));
+        expect(near.has_value());
 
         auto page = lime::page::at(near->start());
 

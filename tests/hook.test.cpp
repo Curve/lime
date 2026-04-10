@@ -43,12 +43,12 @@ suite<"Hooks"> hook_suite = []
     original_test.reset();
     expect(eq(test_fn(10), 10));
 
-    lime::make_hook(test_fn, [](auto &hook, int param) { return hook.reset()(param + 5); });
+    lime::make_hook(test_fn, [](auto &hook, int param) { return std::move(hook).reset()(param + 5); });
 
     expect(eq(test_fn(10), 15));
     expect(eq(test_fn(10), 10));
 
-    lime::make_hook(test_fn, [](auto &hook, int param) { return hook.reset()(param + 10); });
+    lime::make_hook(test_fn, [](auto &hook, int param) { return std::move(hook).reset()(param + 10); });
 
     expect(eq(test_fn(10), 20));
     expect(eq(test_fn(10), 10));
