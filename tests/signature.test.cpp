@@ -1,27 +1,35 @@
-#include <lime/utils/signature.hpp>
+#include <lime/signature.hpp>
 #include <boost/ut.hpp>
 
 using namespace boost::ut;
 using namespace boost::ut::literals;
 
-struct impl
-{
-    std::string mask;
-    std::string pattern;
+static const std::uint8_t data[] = {
+    0x5b, 0x98, 0x05, 0x9a, 0xae, 0xcd, 0x1e, 0x2b, 0x1f, 0xda, 0x7d, 0x85, 0xc0,
+    0x12, 0xb0, 0xcf, 0x4b, 0x89, 0xfc, 0x65, 0xc1, 0xf7, 0x92, 0x9b, 0x74,
 };
 
 suite<"Signature"> signature_suite = []
 {
-    const auto *ida_signature = "0F 2F 05 D8 20 ?? 03 72 41";
-    const auto *code_pattern  = "\x0F\x2F\x05\xD8\x20\x00\x03\x72\x41";
-    const auto *code_mask     = "xxxxx?xxx";
+    using enum lime::signature::results;
 
-    auto ida_sig  = lime::signature::from(ida_signature);
-    auto code_sig = lime::signature::from(code_pattern, code_mask);
+    const auto address = reinterpret_cast<std::uintptr_t>(std::addressof(data));
+    const auto page    = lime::page::at(address);
 
-    auto &ida_impl  = *reinterpret_cast<std::unique_ptr<impl> *>(&ida_sig);
-    auto &code_impl = *reinterpret_cast<std::unique_ptr<impl> *>(&code_sig);
+    expect(page.has_value());
 
-    expect(eq(ida_impl->mask, code_impl->mask));
-    expect(eq(ida_impl->pattern, code_impl->pattern));
+    const auto ida_sig = lime::signature{"ae cd ?? 2b"};
+    const auto sig     = lime::signature{"\xae\xcd\x00\x2b", "xx?x"};
+
+    const auto ida_result     = ida_sig.find(*page);
+    const auto pattern_result = sig.find(*page);
+
+    expect(ida_result.has_value());
+    expect(pattern_result.has_value());
+
+    expect(eq(*ida_result, *pattern_result));
+    expect(eq(*ida_result, address + 4));
+
+    expect(std::ranges::contains(ida_sig.find<all>(*page), *ida_result));
+    expect(std::ranges::contains(sig.find<all>(*page), *ida_result));
 };

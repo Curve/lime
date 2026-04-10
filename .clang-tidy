@@ -43,12 +43,13 @@ Checks: "*,
         -performance-no-int-to-ptr,
         -cppcoreguidelines-interfaces-global-init,
         -*-avoid-c-arrays,
-        -hicpp-no-array-decay
+        -hicpp-no-array-decay,
         -*-array-to-pointer-decay,
-        -*-pro-type-union-access,
-        -*-array-to-pointer-decay,
-        -*-no-array-decay,
-        -*-pro-bounds-constant-array-index,
+        -readability-isolate-declaration,
+        -readability-avoid-return-with-void-value,
+        -misc-use-internal-linkage,
+        -readability-avoid-nested-conditional-operator,
+        -cppcoreguidelines-pro-type-union-access,
 "
 WarningsAsErrors: ''
 HeaderFilterRegex: ''

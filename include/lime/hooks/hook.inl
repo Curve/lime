@@ -2,70 +2,106 @@
 
 #include "hook.hpp"
 
-#include <bit>
+#include <thread>
+#include <chrono>
 
 namespace lime
 {
-    template <detail::function_signature Signature, convention Convention>
-    typename hook<Signature, Convention>::signature_t hook<Signature, Convention>::original() const
+    template <typename, typename>
+    struct detail::is_callable : std::false_type
     {
-        return reinterpret_cast<signature_t>(hook_base::original());
+    };
+
+    template <typename T, typename R, typename... Ts>
+        requires std::same_as<std::invoke_result_t<T, Ts...>, R>
+    struct detail::is_callable<T, R(Ts...)> : std::true_type
+    {
+    };
+
+    namespace detail
+    {
+        template <typename, typename>
+        struct data;
     }
 
-    template <detail::function_signature Signature, convention Convention>
-    template <detail::address Source, detail::address Target>
-    hook<Signature, Convention>::rtn_t<std::unique_ptr> hook<Signature, Convention>::create(Source source,
-                                                                                            Target target)
+    template <typename Hook, typename T>
+    struct detail::data
     {
-        auto source_address = std::bit_cast<std::uintptr_t>(source);
-        auto target_address = std::bit_cast<std::uintptr_t>(target);
+        T callable;
+        Hook hook;
+    };
 
-        auto rtn = hook_base::create(source_address, target_address);
+    template <typename R, typename... Ts, auto U>
+    hook<R(Ts...), U>::hook(hook &&base) noexcept = default;
 
-        if (!rtn)
-        {
-            return tl::make_unexpected(rtn.error());
-        }
-
-        auto *ptr = rtn->release();
-        return std::unique_ptr<hook>{static_cast<hook *>(ptr)};
+    template <typename R, typename... Ts, auto U>
+    hook<R(Ts...), U>::hook(basic_hook &&base) noexcept : basic_hook(std::move(base))
+    {
     }
 
-    template <detail::function_signature Signature, convention Convention>
-    template <detail::address Source, detail::lambda_like Callable>
-    hook<Signature, Convention>::rtn_t<std::add_pointer_t> hook<Signature, Convention>::create(Source source,
-                                                                                               Callable &&target)
+    template <typename R, typename... Ts, auto U>
+    hook<R(Ts...), U>::pointer hook<R(Ts...), U>::reset()
     {
-        static hook<Signature, Convention> *rtn;
-        [[maybe_unused]] static auto lambda = std::forward<Callable>(target);
+        return reinterpret_cast<pointer>(basic_hook::reset());
+    }
 
-        static constexpr auto dispatch = []<typename... T>(T &&...args)
+    template <typename R, typename... Ts, auto U>
+    hook<R(Ts...), U>::pointer hook<R(Ts...), U>::original() const
+    {
+        return reinterpret_cast<pointer>(basic_hook::original());
+    }
+
+    template <typename R, typename... Ts, auto U>
+    template <bool Wait, typename T, typename>
+    basic_hook::res<hook<R(Ts...), U> *> hook<R(Ts...), U>::create(Address auto source, T &&target)
+        requires Callable<T, R(hook &, Ts...)>
+    {
+        static auto data     = detail::data<hook *, T>{};
+        static auto callback = [](Ts... params) -> R
         {
-            return lambda(rtn, std::forward<T>(args)...);
+            if constexpr (Wait)
+            {
+                while (!data.hook)
+                {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+            }
+
+            return data.callable(*data.hook, std::forward<Ts>(params)...);
         };
 
-        auto wrapper = detail::calling_convention<Signature, Convention>::template wrapper<dispatch>;
-        auto result  = create(source, wrapper);
+        auto rtn = create(source, static_cast<pointer>(&traits::template wrapper<callback>));
 
-        if (!result)
+        if (!rtn.has_value())
         {
-            return tl::make_unexpected(result.error());
+            return std::unexpected{rtn.error()};
         }
 
-        rtn = result->release();
+        data.callable = std::forward<T>(target);
+        data.hook     = new hook{std::move(*rtn)};
 
-        return rtn;
+        return data.hook;
     }
 
-    template <convention Convention, detail::function_pointer Signature, typename Callable>
-    auto make_hook(Signature source, Callable &&target)
+    template <typename R, typename... Ts, auto U>
+    basic_hook::res<hook<R(Ts...), U>> hook<R(Ts...), U>::create(Address auto source, pointer target)
     {
-        return hook<std::remove_pointer_t<Signature>, Convention>::create(source, std::forward<Callable>(target));
+        const auto source_address = reinterpret_cast<std::uintptr_t>(source);
+        const auto target_address = reinterpret_cast<std::uintptr_t>(target);
+
+        auto rtn = basic_hook::create(source_address, target_address);
+
+        if (!rtn.has_value())
+        {
+            return std::unexpected{rtn.error()};
+        }
+
+        return hook{std::move(*rtn)};
     }
 
-    template <typename Signature, convention Convention, typename Callable>
-    auto make_hook(detail::address auto source, Callable &&target)
+    template <typename R, typename... Ts, typename T>
+    auto make_hook(R (*source)(Ts...), T &&replacement)
     {
-        return hook<Signature, Convention>::create(source, std::forward<Callable>(target));
+        return hook<R(Ts...)>::create(source, std::forward<T>(replacement));
     }
 } // namespace lime

@@ -2,47 +2,50 @@
 
 #include "page.hpp"
 
-#include <iterator>
-#include <algorithm>
-
 #include <cstring>
 
 namespace lime
 {
-    struct address::impl
+    address::address(std::uintptr_t address) : m_address(address) {}
+
+    std::uintptr_t address::value() const
     {
-        std::uintptr_t address;
-    };
-
-    address::address() : m_impl(std::make_unique<impl>()) {}
-
-    address::~address() = default;
-
-    address::address(const address &other) : m_impl(std::make_unique<impl>())
-    {
-        *m_impl = *other.m_impl;
+        return m_address;
     }
 
-    address::address(address &&other) noexcept : m_impl(std::move(other.m_impl)) {}
-
-    bool address::write(const void *data, std::size_t size)
+    const void *address::ptr() const
     {
-        auto page = lime::page::at(m_impl->address);
+        return reinterpret_cast<const void *>(m_address);
+    }
 
-        if (!page)
+    std::optional<void *> address::mut_ptr() const
+    {
+        if (const auto page = lime::page::at(m_address); !page || !page->can(protection::write))
+        {
+            return std::nullopt;
+        }
+
+        return reinterpret_cast<void *>(m_address);
+    }
+
+    bool address::write(std::span<const std::uint8_t> data) const
+    {
+        auto page = lime::page::at(m_address);
+
+        if (!page.has_value())
         {
             return false;
         }
 
-        auto writable = page->prot() & protection::write;
+        const auto writable = page->can(protection::write);
+        auto *const ptr     = reinterpret_cast<void *>(m_address);
 
-        if (!writable && !page->protect(page->prot() | protection::write))
+        if (!writable && !page->allow(protection::write))
         {
             return false;
         }
 
-        auto *dest = reinterpret_cast<void *>(m_impl->address);
-        std::memcpy(dest, data, size);
+        std::memcpy(ptr, data.data(), data.size());
 
         if (!writable)
         {
@@ -52,67 +55,30 @@ namespace lime
         return true;
     }
 
-    std::vector<std::uint8_t> address::copy(std::size_t size)
+    std::vector<std::uint8_t> address::copy(std::size_t size) const
     {
-        const auto *src = reinterpret_cast<std::uint8_t *>(m_impl->address);
-
-        std::vector<std::uint8_t> rtn;
-        std::ranges::copy(src, src + size, std::back_inserter(rtn));
-
-        return rtn;
-    }
-
-    void *address::ptr() const
-    {
-        return reinterpret_cast<void *>(m_impl->address);
-    }
-
-    std::uintptr_t address::addr() const
-    {
-        return m_impl->address;
+        const auto *const src = reinterpret_cast<const std::uint8_t *>(m_address);
+        return {src, src + size};
     }
 
     std::optional<address> address::operator+(const std::size_t amount) const
     {
-        return at(m_impl->address + amount);
+        return at(m_address + amount);
     }
 
     std::optional<address> address::operator-(const std::size_t amount) const
     {
-        return at(m_impl->address - amount);
-    }
-
-    std::strong_ordering address::operator<=>(const address &other) const
-    {
-        const auto address = other.addr();
-
-        if (address > m_impl->address)
-        {
-            return std::strong_ordering::less;
-        }
-
-        if (address < m_impl->address)
-        {
-            return std::strong_ordering::greater;
-        }
-
-        return std::strong_ordering::equal;
+        return at(m_address - amount);
     }
 
     address address::unsafe(std::uintptr_t address)
     {
-        lime::address rtn;
-
-        rtn.m_impl->address = address;
-
-        return rtn;
+        return {address};
     }
 
     std::optional<address> address::at(std::uintptr_t address)
     {
-        const auto page = page::at(address);
-
-        if (!page || !(page->prot() & protection::read))
+        if (const auto page = lime::page::at(address); !page || !page->can(protection::read))
         {
             return std::nullopt;
         }

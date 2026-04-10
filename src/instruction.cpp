@@ -1,78 +1,118 @@
 #include "instruction.hpp"
+
+#include "address.hpp"
 #include "constants.hpp"
-#include "disasm.hpp"
-#include "page.hpp"
+
+#include <Zydis/Zydis.h>
 
 namespace lime
 {
     struct instruction::impl
     {
         std::uintptr_t address;
-        std::shared_ptr<lime::page> page;
+
+      public:
+        ZydisDecodedInstruction instruction;
+        std::array<ZydisDecodedOperand, ZYDIS_MAX_OPERAND_COUNT> operands;
     };
 
-    instruction::instruction() : m_impl(std::make_unique<impl>()) {}
+    instruction::instruction(impl data) : m_impl(std::make_unique<impl>(data)) {}
 
-    instruction::~instruction() = default;
-
-    instruction::instruction(const instruction &other) : m_impl(std::make_unique<impl>())
-    {
-        *m_impl = *other.m_impl;
-    }
+    instruction::instruction(const instruction &other) : instruction(*other.m_impl) {}
 
     instruction::instruction(instruction &&other) noexcept : m_impl(std::move(other.m_impl)) {}
 
-    instruction &instruction::operator=(instruction &&other) noexcept
+    instruction::~instruction() = default;
+
+    instruction &instruction::operator=(instruction other) noexcept
     {
-        m_impl = std::move(other.m_impl);
+        swap(*this, other);
         return *this;
     }
 
-    std::uintptr_t instruction::addr() const
+    void swap(instruction &first, instruction &second) noexcept
+    {
+        using std::swap;
+        swap(first.m_impl, second.m_impl);
+    }
+
+    std::uintptr_t instruction::address() const
     {
         return m_impl->address;
     }
 
     std::size_t instruction::size() const
     {
-        return disasm::size(m_impl->address);
+        return m_impl->instruction.length;
     }
 
-    std::size_t instruction::mnemonic() const
+    lime::mnemonic instruction::mnemonic() const
     {
-        return disasm::mnemonic(m_impl->address);
+        return ZydisMnemonicGetString(m_impl->instruction.mnemonic);
     }
 
     bool instruction::relative() const
     {
-        return disasm::relative(m_impl->address);
+        return m_impl->instruction.attributes & ZYDIS_ATTRIB_IS_RELATIVE;
     }
 
     bool instruction::branching() const
     {
-        return disasm::branching(m_impl->address);
+        return m_impl->instruction.meta.branch_type != ZYDIS_BRANCH_TYPE_NONE;
     }
 
     disp instruction::displacement() const
     {
-        return disasm::displacement(m_impl->address);
+        const auto &displacement = m_impl->instruction.raw.disp;
+
+        return {
+            .amount = displacement.value,
+            .size   = displacement.size,
+            .offset = displacement.offset,
+        };
     }
 
-    std::vector<imm> instruction::immediates() const
+    std::array<imm, 2> instruction::immediates() const
     {
-        return disasm::immediates(m_impl->address);
+        static constexpr auto transform = [](auto value) -> imm
+        {
+            return {
+                .relative = static_cast<bool>(value.is_relative),
+                .amount   = value.is_signed ? value.value.s : value.value.u, // NOLINT(*-union-access)
+                .size     = value.size,
+                .offset   = value.offset,
+            };
+        };
+
+        return {transform(m_impl->instruction.raw.imm[0]), transform(m_impl->instruction.raw.imm[1])};
     }
 
     std::optional<instruction> instruction::next() const
     {
-        return *this + size();
+        return operator+(size());
+    }
+
+    std::optional<instruction> instruction::next(lime::mnemonic mnemonic) const
+    {
+        for (auto it = next(); it; it = it->next())
+        {
+            if (it->mnemonic() != mnemonic)
+            {
+                continue;
+            }
+
+            return it;
+        }
+
+        return std::nullopt;
     }
 
     std::optional<instruction> instruction::prev() const
     {
-        const auto start = m_impl->address - max_instruction_size;
+        const auto address = m_impl->address;
+        const auto start   = address - max_instruction_size;
 
-        for (auto current = start; current < m_impl->address; current++)
+        for (auto current = start; current < address; ++current)
         {
             auto instruction = at(current);
 
@@ -88,7 +128,7 @@ namespace lime
                 continue;
             }
 
-            if (next->addr() != m_impl->address)
+            if (next->address() != address)
             {
                 continue;
             }
@@ -109,46 +149,36 @@ namespace lime
         return std::nullopt;
     }
 
-    std::optional<instruction> instruction::next(std::size_t mnemonic) const
+    std::optional<instruction> instruction::prev(lime::mnemonic mnemonic) const
     {
-        auto current = next();
-
-        while (current && current->mnemonic() != mnemonic)
+        for (auto it = prev(); it; it = it->prev())
         {
-            // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-            auto next = current->next();
-
-            if (!next)
+            if (it->mnemonic() != mnemonic)
             {
-                return std::nullopt;
+                continue;
             }
 
-            current.emplace(std::move(next.value()));
+            return it;
         }
 
-        return current;
+        return std::nullopt;
     }
 
-    std::optional<instruction> instruction::follow() const
+    std::optional<std::uintptr_t> instruction::follow() const
     {
-        auto new_address = disasm::follow(m_impl->address);
+        return follow(m_impl->address);
+    }
 
-        if (!new_address)
+    std::optional<std::uintptr_t> instruction::follow(std::uintptr_t rip) const
+    {
+        auto result = ZyanU64{};
+
+        if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&m_impl->instruction, m_impl->operands.data(), rip, &result)))
         {
             return std::nullopt;
         }
 
-        return at(new_address.value());
-    }
-
-    std::optional<std::uintptr_t> instruction::absolute() const
-    {
-        return disasm::follow(m_impl->address);
-    }
-
-    std::optional<std::uintptr_t> instruction::absolute(std::uintptr_t rip) const
-    {
-        return disasm::follow(m_impl->address, rip);
+        return result;
     }
 
     std::optional<instruction> instruction::operator-(std::size_t amount) const
@@ -163,45 +193,37 @@ namespace lime
 
     std::strong_ordering instruction::operator<=>(const instruction &other) const
     {
-        const auto address = other.addr();
-
-        if (address > m_impl->address)
-        {
-            return std::strong_ordering::less;
-        }
-
-        if (address < m_impl->address)
-        {
-            return std::strong_ordering::greater;
-        }
-
-        return std::strong_ordering::equal;
-    }
-
-    instruction instruction::unsafe(std::uintptr_t address)
-    {
-        instruction rtn;
-
-        rtn.m_impl->address = address;
-        rtn.m_impl->page    = std::make_shared<lime::page>(page::unsafe(address));
-
-        return rtn;
+        return address() <=> other.address();
     }
 
     std::optional<instruction> instruction::at(std::uintptr_t address)
     {
-        const auto page = page::at(address);
+        const auto addr = lime::address::at(address);
 
-        if (!page || !(page->prot() & protection::read))
+        if (!addr)
         {
             return std::nullopt;
         }
 
-        if (!disasm::valid(address))
+        auto decoder = ZydisDecoder{};
+
+        if constexpr (arch == architecture::x64)
+        {
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LONG_64, ZYDIS_STACK_WIDTH_64);
+        }
+        else
+        {
+            ZydisDecoderInit(&decoder, ZYDIS_MACHINE_MODE_LEGACY_32, ZYDIS_STACK_WIDTH_32);
+        }
+
+        auto inst = ZydisDecodedInstruction{};
+        auto ops  = std::array<ZydisDecodedOperand, ZYDIS_MAX_OPERAND_COUNT>{};
+
+        if (!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, addr->ptr(), max_instruction_size, &inst, ops.data())))
         {
             return std::nullopt;
         }
 
-        return unsafe(address);
+        return instruction{{.address = address, .instruction = inst, .operands = ops}};
     }
 } // namespace lime

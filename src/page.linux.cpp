@@ -2,82 +2,90 @@
 #include "constants.hpp"
 
 #include <cassert>
-#include <cinttypes>
-#include <sys/mman.h>
 
-#include <array>
 #include <limits>
 #include <ranges>
+
 #include <fstream>
 #include <algorithm>
-#include <filesystem>
+
+#include <sys/mman.h>
+#include <scn/scan.h>
 
 namespace lime
 {
-    namespace fs = std::filesystem;
-
     struct page::impl
     {
         protection prot;
-        int original_prot;
 
       public:
-        std::uintptr_t end;
         std::uintptr_t start;
+        std::uintptr_t end;
 
       public:
-        static std::shared_ptr<page> from(void *, std::size_t, protection);
+        std::optional<protection> original;
+        std::shared_ptr<void> release;
+
+      public:
+        static std::optional<page> parse_page(std::string_view);
     };
 
-    std::shared_ptr<page> page::impl::from(void *address, std::size_t size, protection protection)
+    std::optional<page> page::impl::parse_page(std::string_view line)
     {
-        auto *rtn = new page;
+        const auto result = scn::scan<std::uintptr_t, std::uintptr_t, std::string>(line, "{:x}-{:x} {}");
 
-        rtn->m_impl->start = reinterpret_cast<std::uintptr_t>(address);
-        rtn->m_impl->end   = rtn->m_impl->start + size;
-
-        rtn->m_impl->original_prot = static_cast<int>(protection);
-        rtn->m_impl->prot          = protection;
-
-        auto deleter = [](page *page)
+        if (!result)
         {
-            munmap(reinterpret_cast<void *>(page->start()), page->size());
-            delete page;
-        };
+            assert(false && "Failed to parse page");
+            return std::nullopt;
+        }
 
-        return {rtn, deleter};
+        auto [start, end, permissions] = result->values();
+        auto prot                      = protection{};
+
+        if (permissions.size() < 3) [[unlikely]]
+        {
+            permissions = std::format("{}{}", permissions, std::string(3 - permissions.size(), '-'));
+        }
+
+        if (permissions[0] == 'r')
+        {
+            prot |= protection::read;
+        }
+        if (permissions[1] == 'w')
+        {
+            prot |= protection::write;
+        }
+        if (permissions[2] == 'x')
+        {
+            prot |= protection::execute;
+        }
+
+        return page{{
+            .prot  = prot,
+            .start = start,
+            .end   = end,
+        }};
     }
 
-    page::page() : m_impl(std::make_unique<impl>()) {}
+    page::page(impl data) : m_impl(std::make_unique<impl>(std::move(data))) {}
 
-    page::~page() = default;
-
-    page::page(const page &other) : m_impl(std::make_unique<impl>())
-    {
-        *m_impl = *other.m_impl;
-    }
+    page::page(const page &other) : page(*other.m_impl) {}
 
     page::page(page &&other) noexcept : m_impl(std::move(other.m_impl)) {}
 
-    page &page::operator=(page &&other) noexcept
+    page::~page() = default;
+
+    page &page::operator=(page other) noexcept
     {
-        m_impl = std::move(other.m_impl);
+        swap(*this, other);
         return *this;
     }
 
-    protection page::prot() const
+    void swap(page &first, page &second) noexcept
     {
-        return m_impl->prot;
-    }
-
-    std::size_t page::size() const
-    {
-        return m_impl->end - m_impl->start;
-    }
-
-    std::uintptr_t page::end() const
-    {
-        return m_impl->end;
+        using std::swap;
+        swap(first.m_impl, second.m_impl);
     }
 
     std::uintptr_t page::start() const
@@ -85,16 +93,50 @@ namespace lime
         return m_impl->start;
     }
 
+    std::uintptr_t page::end() const
+    {
+        return m_impl->end;
+    }
+
+    std::size_t page::size() const
+    {
+        return m_impl->end - m_impl->start;
+    }
+
+    protection page::prot() const
+    {
+        return m_impl->prot;
+    }
+
+    bool page::can(protection what) const
+    {
+        return m_impl->prot & what;
+    }
+
     bool page::restore()
     {
-        if (mprotect(reinterpret_cast<void *>(start()), size(), m_impl->original_prot) != 0)
+        if (!m_impl->original.has_value())
+        {
+            return true;
+        }
+
+        const auto original = *m_impl->original;
+        const auto prot     = static_cast<int>(original);
+
+        if (mprotect(reinterpret_cast<void *>(start()), size(), prot) != 0)
         {
             return false;
         }
 
-        m_impl->prot = static_cast<protection>(m_impl->original_prot);
+        m_impl->prot     = original;
+        m_impl->original = {};
 
         return true;
+    }
+
+    bool page::allow(protection what)
+    {
+        return protect(m_impl->prot & what);
     }
 
     bool page::protect(protection prot)
@@ -104,15 +146,85 @@ namespace lime
             return false;
         }
 
-        m_impl->prot = prot;
+        m_impl->original = m_impl->prot;
+        m_impl->prot     = prot;
 
         return true;
     }
 
+    template <>
+    std::optional<page> page::allocate<page::policy::exact>(std::uintptr_t where, std::size_t size, protection protection)
+    {
+        const auto prot   = static_cast<int>(protection);
+        auto *const alloc = mmap(reinterpret_cast<void *>(where), size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+        if (alloc == MAP_FAILED)
+        {
+            return std::nullopt;
+        }
+
+        return page{{
+            .prot    = protection,
+            .start   = reinterpret_cast<std::uintptr_t>(alloc),
+            .end     = reinterpret_cast<std::uintptr_t>(alloc) + size,
+            .release = std::shared_ptr<void>{alloc, [size](auto *alloc) { munmap(alloc, size); }},
+        }};
+    }
+
+    template <>
+    std::optional<page> page::allocate<page::policy::nearby>(std::uintptr_t where, std::size_t size, protection protection)
+    {
+        if constexpr (lime::arch == lime::architecture::x86)
+        {
+            return allocate(size, protection);
+        }
+
+        static constexpr auto is_aligned = [](auto what)
+        {
+            return what & (getpagesize() - 1);
+        };
+
+        static constexpr auto align = [](auto what)
+        {
+            return (what + getpagesize()) & ~(getpagesize() - 1);
+        };
+
+        auto *alloc  = MAP_FAILED;
+        auto aligned = is_aligned(where) ? where : align(where);
+
+        const auto flags = MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE;
+        const auto prot  = static_cast<int>(protection);
+
+        while (alloc == MAP_FAILED)
+        {
+            static constexpr auto max_dist = std::numeric_limits<std::int32_t>().max();
+            const auto dist                = aligned - where;
+
+            if (dist >= max_dist)
+            {
+                return std::nullopt;
+            }
+
+            alloc   = mmap(reinterpret_cast<void *>(aligned), size, prot, flags, -1, 0);
+            aligned = align(aligned);
+        }
+
+        return page{{
+            .prot    = protection,
+            .start   = reinterpret_cast<std::uintptr_t>(alloc),
+            .end     = reinterpret_cast<std::uintptr_t>(alloc) + size,
+            .release = std::shared_ptr<void>{alloc, [size](auto *alloc) { munmap(alloc, size); }},
+        }};
+    }
+
+    std::optional<page> page::allocate(std::size_t size, protection prot)
+    {
+        return allocate<policy::exact>(reinterpret_cast<std::uintptr_t>(nullptr), size, prot);
+    }
+
     std::vector<page> page::pages()
     {
-        auto path = fs::path("/proc") / "self" / "maps";
-        auto maps = std::ifstream{path};
+        auto maps = std::ifstream{"/proc/self/maps"};
 
         if (maps.fail())
         {
@@ -120,123 +232,39 @@ namespace lime
             return {};
         }
 
-        std::vector<page> rtn;
+        auto rtn = std::vector<page>{};
 
-        std::string line;
-        while (std::getline(maps, line))
+        for (std::string line; std::getline(maps, line);)
         {
-            std::uintptr_t end{};
-            std::uintptr_t start{};
-            std::array<char, 4> permissions{};
+            auto parsed = impl::parse_page(line);
 
-            // NOLINTNEXTLINE(cert-err34-c)
-            auto read = sscanf(line.c_str(), "%" PRIxPTR "-%" PRIxPTR " %4c", &start, &end, permissions.data());
-
-            if (read != 3)
+            if (!parsed.has_value())
             {
-                assert(false && "Failed to read line");
                 continue;
             }
 
-            page item;
-            item.m_impl->end   = end;
-            item.m_impl->start = start;
-
-            if (permissions[0] == 'r')
-            {
-                item.m_impl->prot |= protection::read;
-            }
-            if (permissions[1] == 'w')
-            {
-                item.m_impl->prot |= protection::write;
-            }
-            if (permissions[2] == 'x')
-            {
-                item.m_impl->prot |= protection::execute;
-            }
-
-            item.m_impl->original_prot = static_cast<int>(item.m_impl->prot);
-
-            rtn.emplace_back(std::move(item));
+            rtn.emplace_back(std::move(*parsed));
         }
 
         return rtn;
     }
 
-    page page::unsafe(std::uintptr_t address)
-    {
-        // NOLINTNEXTLINE(*-optional-access)
-        return at(address).value();
-    }
-
     std::optional<page> page::at(std::uintptr_t address)
     {
-        auto pages = page::pages();
+        auto pages    = page::pages();
+        auto reversed = std::views::reverse(pages);
 
-        auto pred = [&](const auto &page)
-        {
-            return address >= page.start() && address <= page.end();
-        };
+        auto it = std::ranges::find_if(reversed,
+                                       [address](const auto &page)
+                                       { // 
+                                           return address >= page.start() && address <= page.end();
+                                       });
 
-        auto it = std::ranges::find_if(std::views::reverse(pages), pred);
-
-        if (it == pages.rend())
+        if (it == reversed.end())
         {
             return std::nullopt;
         }
 
-        return *it;
-    }
-
-    std::shared_ptr<page> page::allocate(std::size_t size, protection prot)
-    {
-        return allocate<alloc_policy::exact>(reinterpret_cast<std::uintptr_t>(nullptr), size, prot);
-    }
-
-    template <>
-    std::shared_ptr<page> page::allocate<alloc_policy::exact>(std::uintptr_t where, std::size_t size,
-                                                              protection protection)
-    {
-        auto *addr      = reinterpret_cast<void *>(where);
-        const auto prot = static_cast<int>(protection);
-        auto *alloc     = mmap(addr, size, prot, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-        if (alloc == MAP_FAILED)
-        {
-            return nullptr;
-        }
-
-        return impl::from(alloc, size, protection);
-    }
-
-    template <>
-    std::shared_ptr<page> page::allocate<alloc_policy::nearby>(std::uintptr_t where, std::size_t size,
-                                                               protection protection)
-    {
-        if constexpr (lime::arch == lime::architecture::x86)
-        {
-            return allocate(size, protection);
-        }
-
-        auto aligned = where & (getpagesize() - 1) ? (where + getpagesize()) & ~(getpagesize() - 1) : where;
-        auto *alloc  = MAP_FAILED;
-
-        const auto flags = MAP_PRIVATE | MAP_ANON | MAP_FIXED_NOREPLACE;
-        const auto prot  = static_cast<int>(protection);
-
-        while (alloc == MAP_FAILED)
-        {
-            const auto diff = aligned - where;
-
-            if (diff >= std::numeric_limits<std::int32_t>().max())
-            {
-                return nullptr;
-            }
-
-            alloc   = mmap(reinterpret_cast<void *>(aligned), size, prot, flags, -1, 0);
-            aligned = (aligned + getpagesize()) & ~(getpagesize() - 1);
-        }
-
-        return impl::from(alloc, size, protection);
+        return std::move(*it);
     }
 } // namespace lime

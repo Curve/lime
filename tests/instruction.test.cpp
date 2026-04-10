@@ -1,6 +1,5 @@
 #include <boost/ut.hpp>
 
-#include <cmath>
 #include <lime/instruction.hpp>
 
 using namespace boost::ut;
@@ -37,11 +36,11 @@ suite<"Instruction"> instruction_suite = []
     expect(eq(instruction.has_value(), true));
 
     expect(eq(instruction->size(), 2));
-    expect(eq(instruction->addr(), reinterpret_cast<std::uintptr_t>(data)));
+    expect(eq(instruction->address(), reinterpret_cast<std::uintptr_t>(data)));
 
     expect(eq(instruction->relative(), false));
     expect(eq(instruction->branching(), false));
-    expect(eq(instruction->mnemonic(), MNEMONIC_MOV));
+    expect(eq(instruction->mnemonic(), std::string_view{"mov"}));
 
     auto mov = instruction->next();
 
@@ -49,15 +48,15 @@ suite<"Instruction"> instruction_suite = []
 
     expect(eq(mov->relative(), false));
     expect(eq(mov->branching(), false));
-    expect(eq(mov->mnemonic(), MNEMONIC_MOV));
+    expect(eq(mov->mnemonic(), std::string_view{"mov"}));
 
     auto prev = mov->prev();
 
     expect(eq(prev.has_value(), true));
-    expect(eq(prev->mnemonic(), MNEMONIC_MOV));
+    expect(eq(prev->mnemonic(), std::string_view{"mov"}));
 
     expect(eq(prev->size(), 2));
-    expect(eq(prev->addr(), reinterpret_cast<std::uintptr_t>(data)));
+    expect(eq(prev->address(), reinterpret_cast<std::uintptr_t>(data)));
 
     auto rel_move = mov->next();
 
@@ -65,19 +64,19 @@ suite<"Instruction"> instruction_suite = []
 
     expect(eq(rel_move->relative(), is64bit));
     expect(eq(rel_move->branching(), false));
-    expect(eq(rel_move->mnemonic(), MNEMONIC_MOV));
+    expect(eq(rel_move->mnemonic(), std::string_view{"mov"}));
 
     auto jmp       = rel_move->next();
-    auto jmp_until = instruction->next(MNEMONIC_JMP);
+    auto jmp_until = instruction->next("jmp");
 
     expect(eq(jmp.has_value(), true));
     expect(eq(jmp_until.has_value(), true));
 
-    expect(eq(jmp->addr(), jmp_until->addr()));
+    expect(eq(jmp->address(), jmp_until->address()));
 
     expect(eq(jmp->relative(), is64bit));
     expect(eq(jmp->branching(), true));
-    expect(eq(jmp->mnemonic(), MNEMONIC_JMP));
+    expect(eq(jmp->mnemonic(), std::string_view{"jmp"}));
 
     auto abs_jmp = jmp->next();
 
@@ -85,12 +84,12 @@ suite<"Instruction"> instruction_suite = []
 
     expect(eq(abs_jmp->relative(), false));
     expect(eq(abs_jmp->branching(), true));
-    expect(eq(abs_jmp->mnemonic(), MNEMONIC_JMP));
+    expect(eq(abs_jmp->mnemonic(), std::string_view{"jmp"}));
 
-    expect(eq(abs_jmp->addr(), jmp->addr() + jmp->size()));
-    expect(eq(rel_move->addr(), mov->addr() + mov->size()));
-    expect(eq(jmp->addr(), rel_move->addr() + rel_move->size()));
-    expect(eq(mov->addr(), instruction->addr() + instruction->size()));
+    expect(eq(abs_jmp->address(), jmp->address() + jmp->size()));
+    expect(eq(rel_move->address(), mov->address() + mov->size()));
+    expect(eq(jmp->address(), rel_move->address() + rel_move->size()));
+    expect(eq(mov->address(), instruction->address() + instruction->size()));
 
 #if INTPTR_MAX == INT64_MAX
     auto call = abs_jmp->next();

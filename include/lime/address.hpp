@@ -1,56 +1,59 @@
 #pragma once
 
-#include <vector>
-#include <memory>
-
 #include <cstdint>
 #include <optional>
 
+#include <span>
+#include <vector>
+
 namespace lime
 {
+    class instruction;
+
     class address
     {
-        struct impl;
+        std::uintptr_t m_address;
 
       private:
-        std::unique_ptr<impl> m_impl;
-
-      private:
-        address();
+        address(std::uintptr_t);
 
       public:
-        ~address();
+        address(const instruction &); // TODO: Remove?
 
       public:
-        address(const address &);
-        address(address &&) noexcept;
+        [[nodiscard]] std::uintptr_t value() const;
 
       public:
-        bool write(const void *data, std::size_t size);
-        [[nodiscard]] std::vector<std::uint8_t> copy(std::size_t size);
+        [[nodiscard]] const void *ptr() const;
+        [[nodiscard]] std::optional<void *> mut_ptr() const;
+
+      public:
+        bool write(std::span<const std::uint8_t>) const; // NOLINT(*-nodiscard)
+        [[nodiscard]] std::vector<std::uint8_t> copy(std::size_t size) const;
 
       public:
         template <typename T>
-        bool write(const T &value);
+        [[nodiscard]] const T *as() const;
 
-      public:
+        template <typename T>
+        [[nodiscard]] std::optional<T *> as_mut() const;
+
+        template <typename T>
+        bool write(const T &);
+
         template <typename T>
         [[nodiscard]] T read();
-
-      public:
-        [[nodiscard]] void *ptr() const;
-        [[nodiscard]] std::uintptr_t addr() const;
 
       public:
         [[nodiscard]] std::optional<address> operator-(std::size_t) const;
         [[nodiscard]] std::optional<address> operator+(std::size_t) const;
 
       public:
-        [[nodiscard]] std::strong_ordering operator<=>(const address &) const;
+        [[nodiscard]] std::strong_ordering operator<=>(const address &) const = default;
 
       public:
-        [[nodiscard]] static address unsafe(std::uintptr_t address);
-        [[nodiscard]] static std::optional<address> at(std::uintptr_t address);
+        [[nodiscard]] static address unsafe(std::uintptr_t);
+        [[nodiscard]] static std::optional<address> at(std::uintptr_t);
     };
 } // namespace lime
 

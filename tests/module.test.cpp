@@ -1,6 +1,7 @@
-#include <filesystem>
 #include <boost/ut.hpp>
-#include <lime/module.hpp>
+
+#include <filesystem>
+#include <lime/lib.hpp>
 
 #if defined(WIN32) || defined(_WIN32)
 #include <windows.h>
@@ -26,34 +27,36 @@ fs::path find_library()
 
 suite<"Module"> module_suite = []
 {
-    expect(eq(lime::module::find("lime-shared-lib").has_value(), false));
+    using namespace lime::literals;
+
+    expect(eq(lime::lib::find("lime-shared-lib").has_value(), false));
 
     const auto path = find_library().string();
 
-    auto loaded = lime::module::load(path);
+    auto loaded = lime::lib::load(path);
     expect(eq(loaded.has_value(), true));
 
-    auto test = lime::module::find("lime-shared-lib");
+    auto test = lime::lib::find("lime-shared-lib"_re);
     expect(eq(test.has_value(), true));
 
 #if defined(WIN32) || defined(_WIN32)
-    auto case_test = lime::module::find("LIME-SHARED-LIB");
+    auto case_test = lime::lib::find("LIME-SHARED-LIB");
     expect(eq(case_test.has_value(), true));
 #endif
 
-    expect(test->name().find("lime-shared") != std::string_view::npos);
-
+    expect(test->name().contains("lime-shared"));
     expect(test->symbols().size() >= 1);
     expect(test->size() > 0);
 
-    expect(eq(test->find_symbol("lime_demo").has_value(), true));
-    expect(test->symbol("lime_demo_export") > 0);
+    expect(test->symbol("demo"_re).has_value());
+    expect(test->symbol("lime_demo_export").has_value());
+    expect(test->symbol([](std::string_view name) { return name.contains("lime_demo"); }).has_value());
 
     expect(test->start() > 0);
     expect(test->end() > 0);
 
     using demo_export_t = int (*)(int);
-    auto demo_export    = reinterpret_cast<demo_export_t>(test->symbol("lime_demo_export"));
+    auto demo_export    = reinterpret_cast<demo_export_t>(*test->symbol("lime_demo_export"));
 
     expect(eq(demo_export(10), 20));
 };

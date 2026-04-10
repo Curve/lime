@@ -22,18 +22,18 @@ namespace lime
 
     static constexpr auto rwx = protection::read | protection::write | protection::execute;
 
-    struct hook_base::impl
+    struct basic_hook::impl
     {
-        std::uintptr_t target;
+        address source;
+        page source_page;
 
       public:
-        std::unique_ptr<address> source;
-        std::shared_ptr<page> source_page;
+        std::uintptr_t target;
         std::vector<std::uint8_t> prologue;
 
       public:
-        std::shared_ptr<page> trampoline;
-        std::shared_ptr<page> spring_board;
+        std::optional<page> trampoline;
+        std::optional<page> spring_board;
 
       public:
         [[nodiscard]] std::size_t required_prologue_size(bool near) const;
@@ -46,7 +46,7 @@ namespace lime
       public:
         static std::optional<offset_ptr> offset_of(const instruction &source);
         static std::optional<offset_ptr> offset_of(std::uintptr_t, const disp &);
-        static std::optional<offset_ptr> offset_of(std::uintptr_t, const std::vector<imm> &);
+        static std::optional<offset_ptr> offset_of(std::uintptr_t, const std::array<imm, 2> &);
 
       public:
         static bool try_offset(const offset_ptr &source, std::intptr_t offset);
@@ -57,75 +57,89 @@ namespace lime
         static std::vector<std::uint8_t> make_jmp(std::uintptr_t source, std::uintptr_t target, bool near = false);
     };
 
-    hook_base::hook_base() : m_impl(std::make_unique<impl>()) {}
+    basic_hook::basic_hook(impl &&data) : m_impl(std::make_unique<impl>(std::move(data))) {}
 
-    hook_base::~hook_base()
+    basic_hook::basic_hook(basic_hook &&) noexcept = default;
+
+    basic_hook &basic_hook::operator=(basic_hook &&) noexcept = default;
+
+    basic_hook::~basic_hook()
     {
-        if (!m_impl || !m_impl->source_page)
+        if (!m_impl)
         {
             return;
         }
 
-        if (!m_impl->source_page->protect(rwx))
-        {
-            assert(false && "Failed to protect original function for restoration");
-            return;
-        }
-
-        m_impl->source->write(m_impl->prologue.data(), m_impl->prologue.size());
-        m_impl->source_page->restore();
+        std::ignore = reset();
     }
 
-    std::uintptr_t hook_base::original() const
+    std::uintptr_t basic_hook::reset()
+    {
+        if (!m_impl || !m_impl->source_page.protect(rwx))
+        {
+            assert(false && "Failed to protect original function for restoration");
+            return {};
+        }
+
+        m_impl->source.write({m_impl->prologue});
+        m_impl->source_page.restore();
+
+        const auto rtn = m_impl->source.value();
+        m_impl.reset();
+
+        return rtn;
+    }
+
+    std::uintptr_t basic_hook::original() const
     {
         return m_impl->trampoline->start();
     }
 
-    hook_base::rtn_t hook_base::create(std::uintptr_t source, std::uintptr_t target)
+    std::expected<basic_hook, basic_hook::error> basic_hook::create(std::uintptr_t source, std::uintptr_t target)
     {
         auto page = page::at(source);
 
-        if (!page)
+        if (!page.has_value())
         {
-            return tl::make_unexpected(hook_error::bad_page);
+            return std::unexpected{error::bad_page};
         }
 
-        if (!(page->prot() & protection::read))
+        if (!page->can(protection::read))
         {
-            return tl::make_unexpected(hook_error::bad_prot);
+            return std::unexpected{error::bad_prot};
         }
 
         auto start = instruction::at(source);
 
-        if (!start)
+        if (!start.has_value())
         {
-            return tl::make_unexpected(hook_error::bad_func);
+            return std::unexpected{error::bad_func};
         }
 
-        if (auto follow = start->follow(); follow)
+        if (auto follow = start->follow().transform([](auto addr) { return instruction::at(addr); }); follow && follow->has_value())
         {
-            start = std::move(follow.value());
-            page.emplace(page::unsafe(start->addr()));
+            start = std::move(**follow);
+            page.emplace(page::at(start->address()).value());
         }
 
-        auto rtn = std::unique_ptr<hook_base>(new hook_base);
+        auto rtn = impl{
+            .source      = address::unsafe(start->address()),
+            .source_page = std::move(*page),
+            .target      = target,
+        };
 
-        rtn->m_impl->target      = target;
-        rtn->m_impl->source_page = std::make_unique<lime::page>(std::move(page.value()));
-        rtn->m_impl->source      = std::make_unique<address>(address::unsafe(start->addr()));
+        const auto spring_board = rtn.create_springboard();
+        const auto near         = rtn.create_trampoline(true, spring_board);
 
-        const auto spring_board = rtn->m_impl->create_springboard();
-        const auto near         = rtn->m_impl->create_trampoline(true, spring_board);
-
-        if (!near && !rtn->m_impl->create_trampoline(false, spring_board))
+        if (!near && !rtn.create_trampoline(false, spring_board))
         {
-            return tl::make_unexpected(hook_error::relocate);
+            return std::unexpected{error::relocate};
         }
 
-        const auto destination = spring_board ? rtn->m_impl->spring_board->start() : target;
+        const auto destination = spring_board ? rtn.spring_board->start() : target;
 
-        auto jump            = impl::make_jmp(start->addr(), destination, spring_board);
-        const auto remaining = rtn->m_impl->prologue.size() - jump.size();
+        auto jump            = impl::make_jmp(start->address(), destination, spring_board);
+        const auto remaining = rtn.prologue.size() - jump.size();
 
         if (remaining > 0)
         {
@@ -133,23 +147,23 @@ namespace lime
             std::ranges::move(padding, std::back_inserter(jump));
         }
 
-        if (!rtn->m_impl->source_page->protect(rwx))
+        if (!rtn.source_page.protect(rwx))
         {
-            return tl::make_unexpected(hook_error::protect);
+            return std::unexpected{error::protect};
         }
 
-        rtn->m_impl->source->write(jump.data(), jump.size());
-        rtn->m_impl->source_page->restore();
+        rtn.source.write({jump});
+        rtn.source_page.restore();
 
-        return rtn;
+        return std::move(rtn);
     }
 
-    std::size_t hook_base::impl::required_prologue_size(bool near) const
+    std::size_t basic_hook::impl::required_prologue_size(bool near) const
     {
-        auto required = near ? size::jmp_near : size::jmp_far;
-        auto rtn      = 0u;
+        const auto required = near ? size::jmp_near : size::jmp_far;
 
-        auto inst = instruction::unsafe(source->addr());
+        auto rtn  = 0u;
+        auto inst = instruction::at(source.value()).value();
 
         while (rtn < required)
         {
@@ -160,14 +174,14 @@ namespace lime
         return rtn;
     }
 
-    std::size_t hook_base::impl::estimate_trampoline_size(bool near) const
+    std::size_t basic_hook::impl::estimate_trampoline_size(bool near) const
     {
         auto rtn        = prologue.size() + (near ? size::jmp_near : size::jmp_far);
         const auto addr = reinterpret_cast<std::uintptr_t>(prologue.data());
 
         for (auto i = 0u; prologue.size() > i;)
         {
-            auto current = instruction::unsafe(addr + i);
+            auto current = instruction::at(addr + i).value();
             i += current.size();
 
             if (!current.relative())
@@ -187,9 +201,9 @@ namespace lime
         return rtn;
     }
 
-    bool hook_base::impl::create_springboard()
+    bool basic_hook::impl::create_springboard()
     {
-        spring_board = page::allocate(source->addr(), size::jmp_far, rwx);
+        spring_board = page::allocate(source.value(), size::jmp_far, rwx);
 
         if (!spring_board)
         {
@@ -197,21 +211,21 @@ namespace lime
         }
 
         auto content = make_jmp(spring_board->start(), target, false);
-        address::unsafe(spring_board->start()).write(content.data(), content.size());
+        address::unsafe(spring_board->start()).write({content});
 
         return true;
     }
 
-    bool hook_base::impl::create_trampoline(bool near, bool spring_board)
+    bool basic_hook::impl::create_trampoline(bool near, bool spring_board)
     {
-        prologue = source->copy(required_prologue_size(spring_board));
+        prologue = source.copy(required_prologue_size(spring_board));
 
         const auto size = estimate_trampoline_size(near);
         trampoline.reset();
 
         if (near)
         {
-            trampoline = page::allocate(source->addr(), size, rwx);
+            trampoline = page::allocate(source.value(), size, rwx);
         }
         else
         {
@@ -226,14 +240,14 @@ namespace lime
         auto content = prologue;
         content.reserve(size);
 
-        const auto original = source->addr() + prologue.size();
+        const auto original = source.value() + prologue.size();
         std::ranges::move(make_jmp(trampoline->start() + prologue.size(), original, near), std::back_inserter(content));
 
         const auto start = reinterpret_cast<std::uintptr_t>(content.data());
 
         for (auto i = 0u, inst_size = 0u; prologue.size() > i; i += inst_size)
         {
-            auto inst = instruction::unsafe(start + i);
+            auto inst = instruction::at(start + i).value();
             inst_size = inst.size();
 
             if (!inst.relative())
@@ -241,8 +255,8 @@ namespace lime
                 continue;
             }
 
-            const auto original_rip    = source->addr() + i;
-            const auto original_target = inst.absolute(original_rip).value();
+            const auto original_rip    = source.value() + i;
+            const auto original_target = inst.follow(original_rip).value();
 
             const auto rip           = trampoline->start() + i;
             const auto reloc_address = trampoline->start() + content.size();
@@ -281,21 +295,21 @@ namespace lime
             return false;
         }
 
-        address::unsafe(trampoline->start()).write(content.data(), content.size());
+        address::unsafe(trampoline->start()).write({content});
 
         return true;
     }
 
-    std::optional<offset_ptr> hook_base::impl::offset_of(const instruction &source)
+    std::optional<offset_ptr> basic_hook::impl::offset_of(const instruction &source)
     {
         const auto disp = source.displacement();
 
-        if (auto offset = offset_of(source.addr(), disp); offset)
+        if (auto offset = offset_of(source.address(), disp); offset)
         {
             return offset;
         }
 
-        if (auto offset = offset_of(source.addr(), source.immediates()); offset)
+        if (auto offset = offset_of(source.address(), source.immediates()); offset)
         {
             return offset;
         }
@@ -303,7 +317,7 @@ namespace lime
         return std::nullopt;
     }
 
-    std::optional<offset_ptr> hook_base::impl::offset_of(std::uintptr_t source, const disp &disp)
+    std::optional<offset_ptr> basic_hook::impl::offset_of(std::uintptr_t source, const disp &disp)
     {
         const auto addr = source + disp.offset;
 
@@ -320,7 +334,7 @@ namespace lime
         return std::nullopt;
     }
 
-    std::optional<offset_ptr> hook_base::impl::offset_of(std::uintptr_t source, const std::vector<imm> &immediates)
+    std::optional<offset_ptr> basic_hook::impl::offset_of(std::uintptr_t source, const std::array<imm, 2> &immediates)
     {
         for (const auto &imm : immediates)
         {
@@ -335,21 +349,18 @@ namespace lime
             switch (imm.size)
             {
             case 8:
-                return is_signed ? offset_ptr{reinterpret_cast<std::int8_t *>(addr)}
-                                 : offset_ptr{reinterpret_cast<std::uint8_t *>(addr)};
+                return is_signed ? offset_ptr{reinterpret_cast<std::int8_t *>(addr)} : offset_ptr{reinterpret_cast<std::uint8_t *>(addr)};
             case 16:
-                return is_signed ? offset_ptr{reinterpret_cast<std::int16_t *>(addr)}
-                                 : offset_ptr{reinterpret_cast<std::uint16_t *>(addr)};
+                return is_signed ? offset_ptr{reinterpret_cast<std::int16_t *>(addr)} : offset_ptr{reinterpret_cast<std::uint16_t *>(addr)};
             case 32:
-                return is_signed ? offset_ptr{reinterpret_cast<std::int32_t *>(addr)}
-                                 : offset_ptr{reinterpret_cast<std::uint32_t *>(addr)};
+                return is_signed ? offset_ptr{reinterpret_cast<std::int32_t *>(addr)} : offset_ptr{reinterpret_cast<std::uint32_t *>(addr)};
             }
         }
 
         return std::nullopt;
     }
 
-    bool hook_base::impl::try_offset(const offset_ptr &source, std::intptr_t offset)
+    bool basic_hook::impl::try_offset(const offset_ptr &source, std::intptr_t offset)
     {
         auto visitor = [&offset]<typename T>(T *source)
         {
@@ -369,7 +380,7 @@ namespace lime
         return std::visit(visitor, source);
     }
 
-    bool hook_base::impl::try_redirect(const offset_ptr &source, std::intptr_t target)
+    bool basic_hook::impl::try_redirect(const offset_ptr &source, std::intptr_t target)
     {
         auto visitor = [&target]<typename T>(T *source)
         {
@@ -394,7 +405,7 @@ namespace lime
         return std::visit(visitor, source);
     }
 
-    std::vector<std::uint8_t> hook_base::impl::make_ptr(std::uintptr_t address)
+    std::vector<std::uint8_t> basic_hook::impl::make_ptr(std::uintptr_t address)
     {
         std::vector<std::uint8_t> rtn(sizeof(std::uintptr_t));
         *reinterpret_cast<std::uintptr_t *>(rtn.data()) = address;
@@ -402,7 +413,7 @@ namespace lime
         return rtn;
     }
 
-    std::vector<std::uint8_t> hook_base::impl::make_jmp(std::uintptr_t source, std::uintptr_t target, bool near)
+    std::vector<std::uint8_t> basic_hook::impl::make_jmp(std::uintptr_t source, std::uintptr_t target, bool near)
     {
         std::vector<std::uint8_t> rtn;
 
@@ -411,7 +422,7 @@ namespace lime
             rtn = {0xE9};
             rtn.resize(rtn.size() + sizeof(std::int32_t));
 
-            auto relative = static_cast<std::int32_t>(target - source - size::jmp_near);
+            auto relative                                     = static_cast<std::int32_t>(target - source - size::jmp_near);
             *reinterpret_cast<std::int32_t *>(rtn.data() + 1) = relative;
         }
         else

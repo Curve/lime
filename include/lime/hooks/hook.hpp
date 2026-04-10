@@ -1,105 +1,101 @@
 #pragma once
 
-#include "convention.hpp"
+#include "../utils/convention.hpp"
 
 #include <memory>
 #include <cstdint>
-#include <concepts>
-#include <functional>
+#include <expected>
 
-#include <tl/expected.hpp>
+#include <concepts>
+#include <type_traits>
 
 namespace lime
 {
+    using utils::calling_convention;
+
     namespace detail
     {
-        template <typename T>
-        concept is_std_function = requires(T value) {
-            []<typename R>(std::function<R> &) {
-            }(value);
-        };
-
-        template <typename T>
-        concept function_signature = requires() {
-            requires not std::is_pointer_v<T>;
-            requires std::is_function_v<T>;
-        };
-
-        template <typename T>
-        concept function_pointer = requires() {
-            requires std::is_pointer_v<T> or std::is_reference_v<T>;
-            requires std::is_function_v<std::remove_pointer_t<std::remove_reference_t<T>>>;
-        };
-
-        template <typename T>
-        concept address = requires() { requires std::integral<T> or function_pointer<T>; };
-
-        template <typename T>
-        concept lambda_like = requires() {
-            requires not address<T>;
-            requires not is_std_function<T>;
-        };
+        template <typename, typename>
+        struct is_callable;
     } // namespace detail
 
-    enum class hook_error
-    {
-        protect,
-        relocate,
-        bad_page,
-        bad_prot,
-        bad_func,
-    };
+    template <typename T, typename Signature>
+    concept Callable = detail::is_callable<T, Signature>::value;
 
-    class hook_base
+    template <typename T>
+    concept Address = std::convertible_to<T, std::uintptr_t> || std::is_pointer_v<T>;
+
+    class basic_hook
     {
         struct impl;
 
-      protected:
-        using rtn_t = tl::expected<std::unique_ptr<hook_base>, hook_error>;
+      public:
+        enum class error : std::uint8_t
+        {
+            bad_page,
+            bad_prot,
+            bad_func,
+            relocate,
+            protect,
+        };
 
-      protected:
+        template <typename T>
+        using res = std::expected<T, error>;
+
+      private:
         std::unique_ptr<impl> m_impl;
 
-      protected:
-        hook_base();
+      public:
+        basic_hook(impl &&);
 
       public:
-        ~hook_base();
+        basic_hook(basic_hook &&) noexcept;
+        basic_hook &operator=(basic_hook &&) noexcept;
 
       public:
-        hook_base(hook_base &&) noexcept;
+        ~basic_hook();
 
       protected:
+        [[nodiscard]] std::uintptr_t reset();
         [[nodiscard]] std::uintptr_t original() const;
 
       protected:
-        [[nodiscard]] static rtn_t create(std::uintptr_t, std::uintptr_t);
+        static res<basic_hook> create(std::uintptr_t, std::uintptr_t);
     };
 
-    template <detail::function_signature Signature, convention Convention = convention::automatic>
-    class hook : public hook_base
+    template <typename, auto = calling_convention::cc_generic>
+    struct hook;
+
+    template <typename R, typename... Ts, auto U>
+    struct hook<R(Ts...), U> : public basic_hook
     {
-        template <template <typename...> typename T>
-        using rtn_t       = tl::expected<T<hook>, hook_error>;
-        using signature_t = std::add_pointer_t<typename detail::calling_convention<Signature, Convention>::add>;
+        using basic_hook::error;
 
       public:
-        signature_t original() const;
+        template <typename T>
+        using res     = std::expected<T, error>;
+        using traits  = utils::convention_traits<R(Ts...), U>;
+        using pointer = traits::pointer;
 
       public:
-        template <detail::address Source, detail::address Target>
-        [[nodiscard]] static rtn_t<std::unique_ptr> create(Source source, Target target);
+        hook(hook &&) noexcept;
+        hook(basic_hook &&) noexcept;
 
       public:
-        template <detail::address Source, detail::lambda_like Callable>
-        static rtn_t<std::add_pointer_t> create(Source source, Callable &&target);
+        [[nodiscard]] pointer reset();
+        [[nodiscard]] pointer original() const;
+
+      public:
+        template <bool Wait = false, typename T, typename = decltype([] {})>
+        static res<hook *> create(Address auto source, T &&target)
+            requires Callable<T, R(hook &, Ts...)>;
+
+      public:
+        static res<hook> create(Address auto source, pointer target);
     };
 
-    template <convention Convention = convention::automatic, detail::function_pointer Signature, typename Callable>
-    auto make_hook(Signature source, Callable &&target);
-
-    template <typename Signature, convention Convention = convention::automatic, typename Callable>
-    auto make_hook(detail::address auto source, Callable &&target);
+    template <typename R, typename... Ts, typename T>
+    auto make_hook(R (*source)(Ts...), T &&replacement);
 } // namespace lime
 
 #include "hook.inl"

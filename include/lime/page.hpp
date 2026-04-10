@@ -1,83 +1,76 @@
 #pragma once
 
-#include <vector>
+#include <cstdint>
 #include <memory>
 
-#include <cstdint>
+#include <vector>
 #include <optional>
 
 #include <flagpp/flags.hpp>
 
 namespace lime
 {
-    enum class protection
+    enum class protection : std::uint8_t
     {
-        none,
+        none    = 0,
         read    = 1 << 0,
         write   = 1 << 1,
         execute = 1 << 2,
-    };
-
-    enum class alloc_policy
-    {
-        exact,
-        nearby,
     };
 
     class page
     {
         struct impl;
 
+      public:
+        enum class policy : std::uint8_t
+        {
+            exact,
+            nearby,
+        };
+
       private:
         std::unique_ptr<impl> m_impl;
 
       private:
-        page();
-
-      public:
-        ~page();
+        page(impl);
 
       public:
         page(const page &);
         page(page &&) noexcept;
 
       public:
-        page &operator=(page &&) noexcept;
+        ~page();
 
       public:
-        [[nodiscard]] protection prot() const;
+        page &operator=(page) noexcept;
+        friend void swap(page &, page &) noexcept;
+
+      public:
+        [[nodiscard]] std::uintptr_t start() const;
+        [[nodiscard]] std::uintptr_t end() const;
 
       public:
         [[nodiscard]] std::size_t size() const;
 
       public:
-        [[nodiscard]] std::uintptr_t end() const;
-        [[nodiscard]] std::uintptr_t start() const;
+        [[nodiscard]] protection prot() const;
+        [[nodiscard]] bool can(protection) const;
 
       public:
         bool restore();
+        bool allow(protection);
         bool protect(protection prot);
 
       public:
+        template <policy = policy::nearby>
+        [[nodiscard]] static std::optional<page> allocate(std::uintptr_t where, std::size_t size, protection prot);
+        [[nodiscard]] static std::optional<page> allocate(std::size_t size, protection prot);
+
+      public:
         [[nodiscard]] static std::vector<page> pages();
-
-      public:
-        [[nodiscard]] static page unsafe(std::uintptr_t address);
-        [[nodiscard]] static std::optional<page> at(std::uintptr_t address);
-
-      public:
-        [[nodiscard]] static std::shared_ptr<page> allocate(std::size_t size, protection prot);
-
-      public:
-        template <alloc_policy Policy = alloc_policy::nearby>
-        [[nodiscard]] static std::shared_ptr<page> allocate(std::uintptr_t where, std::size_t size, protection prot);
+        [[nodiscard]] static std::optional<page> at(std::uintptr_t);
     };
-
-    template <>
-    std::shared_ptr<page> page::allocate<alloc_policy::exact>(std::uintptr_t, std::size_t, protection);
-
-    template <>
-    std::shared_ptr<page> page::allocate<alloc_policy::nearby>(std::uintptr_t, std::size_t, protection);
 } // namespace lime
 
 template <>

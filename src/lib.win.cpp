@@ -1,4 +1,4 @@
-#include "module.hpp"
+#include "library.hpp"
 
 #include <windows.h>
 #include <psapi.h>
@@ -8,7 +8,7 @@
 
 namespace lime
 {
-    struct module::impl
+    struct lib::impl
     {
         using callback_t = std::function<bool(std::string_view)>;
 
@@ -23,42 +23,42 @@ namespace lime
         void iterate_symbols(const callback_t &) const;
 
       public:
-        static std::optional<module> get(HMODULE module);
+        static std::optional<lib> get(HMODULE module);
         static std::string lower(std::string_view string);
     };
 
-    module::module() :m_impl(std::make_unique<impl>()) {}
+    lib::lib() : m_impl(std::make_unique<impl>()) {}
 
-    module::~module() = default;
+    lib::~lib() = default;
 
-    module::module(const module &other) :m_impl(std::make_unique<impl>())
+    lib::lib(const lib &other) : m_impl(std::make_unique<impl>())
     {
         *m_impl = *other.m_impl;
     }
 
-    module::module(module &&other) noexcept :m_impl(std::move(other.m_impl)) {}
+    lib::lib(lib &&other) noexcept : m_impl(std::move(other.m_impl)) {}
 
-    std::string_view module::name() const
+    std::string_view lib::name() const
     {
         return m_impl->name;
     }
 
-    std::size_t module::size() const
+    std::size_t lib::size() const
     {
         return m_impl->info.SizeOfImage;
     }
 
-    std::uintptr_t module::end() const
+    std::uintptr_t lib::end() const
     {
         return start() + size();
     }
 
-    std::uintptr_t module::start() const
+    std::uintptr_t lib::start() const
     {
         return reinterpret_cast<std::uintptr_t>(m_impl->info.lpBaseOfDll);
     }
 
-    std::vector<lime::symbol> module::symbols() const
+    std::vector<lime::symbol> lib::symbols() const
     {
         std::vector<lime::symbol> rtn;
 
@@ -79,12 +79,12 @@ namespace lime
         return rtn;
     }
 
-    std::uintptr_t module::symbol(std::string_view name) const
+    std::uintptr_t lib::symbol(std::string_view name) const
     {
         return reinterpret_cast<std::uintptr_t>(GetProcAddress(m_impl->handle, name.data()));
     }
 
-    std::optional<std::uintptr_t> module::find_symbol(std::string_view name) const
+    std::optional<std::uintptr_t> lib::find_symbol(std::string_view name) const
     {
         std::uintptr_t rtn{0};
 
@@ -110,7 +110,7 @@ namespace lime
         return rtn;
     }
 
-    std::vector<module> module::modules()
+    std::vector<module> lib::modules()
     {
         std::vector<module> rtn;
 
@@ -146,7 +146,7 @@ namespace lime
         return rtn;
     }
 
-    std::optional<module> module::get(std::string_view name)
+    std::optional<lib> lib::get(std::string_view name)
     {
         auto *module = GetModuleHandleA(name.data());
 
@@ -158,7 +158,7 @@ namespace lime
         return impl::get(module);
     }
 
-    std::optional<module> module::load(std::string_view name)
+    std::optional<lib> lib::load(std::string_view name)
     {
         auto *module = LoadLibraryA(name.data());
 
@@ -170,7 +170,7 @@ namespace lime
         return impl::get(module);
     }
 
-    std::optional<module> module::find(std::string_view name)
+    std::optional<lib> lib::find(std::string_view name)
     {
         const auto lower = impl::lower(name);
         auto all         = modules();
@@ -190,7 +190,7 @@ namespace lime
         return std::move(*rtn);
     }
 
-    void module::impl::iterate_symbols(const module::impl::callback_t &callback) const
+    void lib::impl::iterate_symbols(const lib::impl::callback_t &callback) const
     {
         const auto base = reinterpret_cast<std::uintptr_t>(info.lpBaseOfDll);
 
@@ -215,7 +215,7 @@ namespace lime
         }
     }
 
-    std::optional<module> module::impl::get(HMODULE module)
+    std::optional<lib> lib::impl::get(HMODULE module)
     {
         char name[MAX_PATH];
 
@@ -231,7 +231,7 @@ namespace lime
             return std::nullopt;
         }
 
-        lime::module item;
+        lime::lib item;
 
         item.m_impl->info   = info;
         item.m_impl->handle = module;
@@ -240,7 +240,7 @@ namespace lime
         return item;
     }
 
-    std::string module::impl::lower(std::string_view string)
+    std::string lib::impl::lower(std::string_view string)
     {
         std::string rtn{string};
         std::ranges::transform(rtn, rtn.begin(), [](unsigned char c) { return std::tolower(c); });

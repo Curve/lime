@@ -26,7 +26,7 @@ suite<"Address"> address_suite = []
     auto address = lime::address::at(reinterpret_cast<std::uintptr_t>(data.data()));
     {
         expect(eq(address.has_value(), true));
-        expect(eq(address->addr(), reinterpret_cast<std::uintptr_t>(data.data())));
+        expect(eq(address->value(), reinterpret_cast<std::uintptr_t>(data.data())));
 
         for (const auto &value : data)
         {
@@ -36,11 +36,11 @@ suite<"Address"> address_suite = []
             auto next = current + offset;
             expect(eq(next.has_value(), true));
 
-            address.emplace(std::move(next.value()));
+            address.emplace(next.value());
         }
     }
 
-    auto back_address = lime::address::at(address->addr() - offset);
+    auto back_address = lime::address::at(address->value() - offset);
     {
         expect(eq(back_address.has_value(), true));
 
@@ -54,7 +54,7 @@ suite<"Address"> address_suite = []
             auto next = current - offset;
             expect(eq(next.has_value(), true));
 
-            back_address.emplace(std::move(next.value()));
+            back_address.emplace(next.value());
         }
     }
 

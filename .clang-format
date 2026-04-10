@@ -1,5 +1,4 @@
 ---
-Language: Cpp
 InsertNewlineAtEOF: true
 AccessModifierOffset: -2
 AlignAfterOpenBracket: Align
@@ -54,9 +53,7 @@ BreakConstructorInitializersBeforeComma: false
 BreakConstructorInitializers: BeforeColon
 BreakAfterJavaFieldAnnotations: false
 BreakStringLiterals: true
-BreakBeforeConceptDeclarations: Always
-RequiresClausePosition: SingleLine
-ColumnLimit: 120
+ColumnLimit: 140
 CompactNamespaces: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: false
 ConstructorInitializerIndentWidth: 4

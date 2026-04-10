@@ -19,7 +19,7 @@ file(GLOB src "*.test.cpp" "main.cpp")
 target_sources(${PROJECT_NAME} PRIVATE ${src})
 
 # --------------------------------------------------------------------------------------------------------
-# Link Dependencies 
+# Link Dependencies
 # --------------------------------------------------------------------------------------------------------
 
 include("../cmake/cpm.cmake")
