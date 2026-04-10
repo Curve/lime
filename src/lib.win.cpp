@@ -1,42 +1,52 @@
-#include "library.hpp"
+#include "lib.hpp"
 
 #include <windows.h>
 #include <psapi.h>
 
-#include <functional>
-#include <algorithm>
-
 namespace lime
 {
+    std::regex literals::operator""_re(const char *str, std::size_t len)
+    {
+        return std::regex{std::string{str, len}, std::regex::icase};
+    }
+
     struct lib::impl
     {
-        using callback_t = std::function<bool(std::string_view)>;
+        HMODULE handle;
+        MODULEINFO info;
 
       public:
         std::string name;
 
       public:
-        HMODULE handle;
-        MODULEINFO info;
-
-      public:
-        void iterate_symbols(const callback_t &) const;
-
-      public:
-        static std::optional<lib> get(HMODULE module);
-        static std::string lower(std::string_view string);
+        static std::optional<lib> from(HMODULE);
+        static const char *iter_sym(MODULEINFO, const lib::sym_predicate &);
     };
 
-    lib::lib() : m_impl(std::make_unique<impl>()) {}
+    lib::lib(impl data) : m_impl(std::make_unique<impl>(std::move(data))) {}
+
+    lib::lib(const lib &other) : lib(*other.m_impl) {}
+
+    lib::lib(lib &&other) noexcept : m_impl(std::move(other.m_impl)) {}
 
     lib::~lib() = default;
 
-    lib::lib(const lib &other) : m_impl(std::make_unique<impl>())
+    lib &lib::operator=(lib other) noexcept
     {
-        *m_impl = *other.m_impl;
+        swap(*this, other);
+        return *this;
     }
 
-    lib::lib(lib &&other) noexcept : m_impl(std::move(other.m_impl)) {}
+    void swap(lib &first, lib &second) noexcept
+    {
+        using std::swap;
+        swap(first.m_impl, second.m_impl);
+    }
+
+    std::uintptr_t lib::start() const
+    {
+        return reinterpret_cast<std::uintptr_t>(m_impl->info.lpBaseOfDll);
+    }
 
     std::string_view lib::name() const
     {
@@ -48,76 +58,58 @@ namespace lime
         return m_impl->info.SizeOfImage;
     }
 
-    std::uintptr_t lib::end() const
-    {
-        return start() + size();
-    }
-
-    std::uintptr_t lib::start() const
-    {
-        return reinterpret_cast<std::uintptr_t>(m_impl->info.lpBaseOfDll);
-    }
-
     std::vector<lime::symbol> lib::symbols() const
     {
-        std::vector<lime::symbol> rtn;
+        auto rtn = std::vector<lime::symbol>{};
 
-        auto fn = [&](auto name)
-        {
-            auto sym = symbol(name);
+        impl::iter_sym(m_impl->info,
+                       [&](const char *name)
+                       {
+                           if (auto addr = symbol(name); addr.has_value())
+                           {
+                               rtn.emplace_back(lime::symbol{
+                                   .name    = name,
+                                   .address = *addr,
+                               });
+                           }
 
-            rtn.emplace_back(lime::symbol{
-                .name    = std::string{name},
-                .address = sym,
-            });
-
-            return false;
-        };
-
-        m_impl->iterate_symbols(fn);
+                           return false;
+                       });
 
         return rtn;
     }
 
-    std::uintptr_t lib::symbol(std::string_view name) const
+    std::optional<std::uintptr_t> lib::symbol(const char *name) const
     {
-        return reinterpret_cast<std::uintptr_t>(GetProcAddress(m_impl->handle, name.data()));
-    }
+        auto *const addr = GetProcAddress(m_impl->handle, name);
 
-    std::optional<std::uintptr_t> lib::find_symbol(std::string_view name) const
-    {
-        std::uintptr_t rtn{0};
-
-        auto fn = [&](auto item)
-        {
-            if (item.find(name) == std::string_view::npos)
-            {
-                return false;
-            }
-
-            rtn = symbol(item);
-
-            return true;
-        };
-
-        m_impl->iterate_symbols(fn);
-
-        if (!rtn)
+        if (!addr)
         {
             return std::nullopt;
         }
 
-        return rtn;
+        return reinterpret_cast<std::uintptr_t>(addr);
     }
 
-    std::vector<module> lib::modules()
+    std::optional<std::uintptr_t> lib::symbol(const sym_predicate &pred) const
     {
-        std::vector<module> rtn;
+        const auto *const name = impl::iter_sym(m_impl->info, pred);
 
-        std::vector<HMODULE> modules{32};
+        if (!name)
+        {
+            return std::nullopt;
+        }
+
+        return symbol(name);
+    }
+
+    std::vector<lib> lib::libraries()
+    {
+        auto rtn     = std::vector<lib>{};
+        auto modules = std::vector<HMODULE>{32};
+
+        auto required     = DWORD{};
         const auto length = modules.size() * sizeof(HMODULE);
-
-        DWORD required{};
 
         if (!EnumProcessModules(GetCurrentProcess(), modules.data(), length, &required))
         {
@@ -133,89 +125,44 @@ namespace lime
 
         for (const auto &handle : modules)
         {
-            auto module = impl::get(handle);
+            auto module = impl::from(handle);
 
-            if (!module)
+            if (!module.has_value())
             {
                 continue;
             }
 
-            rtn.emplace_back(std::move(module.value()));
+            rtn.emplace_back(std::move(*module));
         }
 
         return rtn;
     }
 
-    std::optional<lib> lib::get(std::string_view name)
+    std::optional<lib> lib::load(const fs::path &path)
     {
-        auto *module = GetModuleHandleA(name.data());
+        auto *const module = LoadLibraryW(path.wstring().c_str());
 
         if (!module)
         {
             return std::nullopt;
         }
 
-        return impl::get(module);
+        return impl::from(module);
     }
 
-    std::optional<lib> lib::load(std::string_view name)
+    std::optional<lib> lib::find(const fs::path &name)
     {
-        auto *module = LoadLibraryA(name.data());
+        auto *const module = GetModuleHandleW(name.wstring().c_str());
 
         if (!module)
         {
             return std::nullopt;
         }
 
-        return impl::get(module);
+        return impl::from(module);
     }
 
-    std::optional<lib> lib::find(std::string_view name)
-    {
-        const auto lower = impl::lower(name);
-        auto all         = modules();
-
-        auto pred = [&](const auto &item)
-        {
-            return item.name().find(lower) != std::string_view::npos;
-        };
-
-        auto rtn = std::ranges::find_if(all, pred);
-
-        if (rtn == all.end())
-        {
-            return std::nullopt;
-        }
-
-        return std::move(*rtn);
-    }
-
-    void lib::impl::iterate_symbols(const lib::impl::callback_t &callback) const
-    {
-        const auto base = reinterpret_cast<std::uintptr_t>(info.lpBaseOfDll);
-
-        auto *header    = reinterpret_cast<IMAGE_DOS_HEADER *>(base);
-        auto *nt_header = reinterpret_cast<IMAGE_NT_HEADERS *>(base + header->e_lfanew);
-
-        auto *exports = reinterpret_cast<IMAGE_EXPORT_DIRECTORY *>(
-            base + nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress);
-
-        auto *names = reinterpret_cast<std::uint32_t *>(base + exports->AddressOfNames);
-
-        for (auto i = 0u; i < exports->NumberOfNames; i++)
-        {
-            const auto *current = reinterpret_cast<const char *>(base + names[i]);
-
-            if (!callback(current))
-            {
-                continue;
-            }
-
-            break;
-        }
-    }
-
-    std::optional<lib> lib::impl::get(HMODULE module)
+    std::optional<lib> lib::impl::from(HMODULE module)
     {
         char name[MAX_PATH];
 
@@ -231,20 +178,33 @@ namespace lime
             return std::nullopt;
         }
 
-        lime::lib item;
-
-        item.m_impl->info   = info;
-        item.m_impl->handle = module;
-        item.m_impl->name   = lower(name);
-
-        return item;
+        return lib{{.handle = module, .info = info, .name = name}};
     }
 
-    std::string lib::impl::lower(std::string_view string)
+    const char *lib::impl::iter_sym(MODULEINFO info, const lib::sym_predicate &pred)
     {
-        std::string rtn{string};
-        std::ranges::transform(rtn, rtn.begin(), [](unsigned char c) { return std::tolower(c); });
+        const auto base = reinterpret_cast<std::uintptr_t>(info.lpBaseOfDll);
 
-        return rtn;
-    };
+        const auto *const header    = reinterpret_cast<IMAGE_DOS_HEADER *>(base);
+        const auto *const nt_header = reinterpret_cast<IMAGE_NT_HEADERS *>(base + header->e_lfanew);
+
+        const auto export_address = base + nt_header->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT].VirtualAddress;
+
+        const auto *const exports = reinterpret_cast<IMAGE_EXPORT_DIRECTORY *>(export_address);
+        const auto *const names   = reinterpret_cast<std::uint32_t *>(base + exports->AddressOfNames);
+
+        for (auto i = 0uz; i < exports->NumberOfNames; ++i)
+        {
+            const auto *const current = reinterpret_cast<const char *>(base + names[i]);
+
+            if (!pred(current))
+            {
+                continue;
+            }
+
+            return current;
+        }
+
+        return nullptr;
+    }
 } // namespace lime

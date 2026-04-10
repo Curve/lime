@@ -8,6 +8,11 @@
 
 namespace lime
 {
+    std::regex literals::operator""_re(const char *str, std::size_t len)
+    {
+        return std::regex{std::string{str, len}};
+    }
+
     struct lib::impl
     {
         void *handle;
@@ -37,11 +42,6 @@ namespace lime
     std::uintptr_t lib::start() const
     {
         return m_impl->info.dlpi_addr + m_impl->info.dlpi_phdr->p_vaddr;
-    }
-
-    std::uintptr_t lib::end() const
-    {
-        return start() + size();
     }
 
     std::string_view lib::name() const
@@ -137,21 +137,8 @@ namespace lime
         return find(path.c_str());
     }
 
-    std::optional<lib> lib::find(std::string_view name)
+    std::optional<lib> lib::find(const fs::path &name)
     {
         return find([name](const auto &item) { return item.name() == name; });
-    }
-
-    std::optional<lib> lib::find(const lib_predicate &pred)
-    {
-        auto libraries = lib::libraries();
-        auto it        = std::ranges::find_if(libraries, pred);
-
-        if (it == libraries.end())
-        {
-            return std::nullopt;
-        }
-
-        return std::move(*it);
     }
 } // namespace lime

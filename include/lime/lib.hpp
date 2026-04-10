@@ -66,7 +66,6 @@ namespace lime
         [[nodiscard]] std::vector<lime::symbol> symbols() const;
 
       public:
-        // TODO: Can symbols contain unicode symbols?
         [[nodiscard]] std::optional<std::uintptr_t> symbol(const char *) const;
         [[nodiscard]] std::optional<std::uintptr_t> symbol(const std::regex &) const;
         [[nodiscard]] std::optional<std::uintptr_t> symbol(const sym_predicate &) const;
@@ -79,8 +78,7 @@ namespace lime
         [[nodiscard]] static std::optional<lib> load(const fs::path &);
 
       public:
-        // TODO: Should we take fs::path(s) here?
-        [[nodiscard]] static std::optional<lib> find(std::string_view);
+        [[nodiscard]] static std::optional<lib> find(const fs::path &);
         [[nodiscard]] static std::optional<lib> find(const std::regex &);
         [[nodiscard]] static std::optional<lib> find(const lib_predicate &);
     };
