@@ -8,12 +8,10 @@ namespace lime::utils
     {
         cc_generic,
         cc_cdecl,
-        cc_clrcall,
         cc_stdcall,
         cc_fastcall,
         cc_thiscall,
         cc_vectorcall,
-        cc_preserve_none,
     };
 
     template <typename, auto>

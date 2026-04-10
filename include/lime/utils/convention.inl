@@ -46,19 +46,6 @@ namespace lime::utils
     };
 
     template <typename R, typename... Ts>
-    struct convention_traits<R(Ts...), calling_convention::cc_clrcall>
-    {
-        using pointer = R(lime_cc(clrcall) *)(Ts...);
-
-      public:
-        template <auto Fn>
-        static R lime_cc(clrcall) wrapper(Ts... params)
-        {
-            return Fn(std::forward<Ts>(params)...);
-        }
-    };
-
-    template <typename R, typename... Ts>
     struct convention_traits<R(Ts...), calling_convention::cc_stdcall>
     {
         using pointer = R(lime_cc(stdcall) *)(Ts...);
@@ -105,19 +92,6 @@ namespace lime::utils
       public:
         template <auto Fn>
         static R lime_cc(vectorcall) wrapper(Ts... params)
-        {
-            return Fn(std::forward<Ts>(params)...);
-        }
-    };
-
-    template <typename R, typename... Ts>
-    struct convention_traits<R(Ts...), calling_convention::cc_preserve_none>
-    {
-        using pointer = R(lime_cc(preserve_none) *)(Ts...);
-
-      public:
-        template <auto Fn>
-        static R lime_cc(preserve_none) wrapper(Ts... params)
         {
             return Fn(std::forward<Ts>(params)...);
         }
