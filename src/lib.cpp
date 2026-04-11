@@ -2,24 +2,20 @@
 
 namespace lime
 {
+    regex literals::operator""_re(const char *str, std::size_t len)
+    {
+        auto string = std::string{str, len};
+        return {.regex = std::regex{string}, .pattern = string};
+    }
+
     std::uintptr_t lib::end() const
     {
         return start() + size();
     }
 
-    std::optional<std::uintptr_t> lib::symbol(const std::regex &regex) const
+    std::optional<std::uintptr_t> lib::symbol(const regex &re) const
     {
-        return symbol([&](std::string_view name) { return std::regex_search(name.begin(), name.end(), regex); });
-    }
-
-    std::optional<lib> lib::find(const std::regex &regex)
-    {
-        return find(
-            [&](const auto &item)
-            {
-                const auto name = item.name();
-                return std::regex_search(name.begin(), name.end(), regex);
-            });
+        return symbol([&](std::string_view name) { return std::regex_search(name.begin(), name.end(), re.regex); });
     }
 
     std::optional<lib> lib::find(const lib_predicate &pred)

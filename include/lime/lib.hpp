@@ -18,9 +18,15 @@ namespace lime
 {
     namespace fs = std::filesystem;
 
+    struct regex
+    {
+        std::regex regex;
+        std::string pattern;
+    };
+
     namespace literals
     {
-        std::regex operator""_re(const char *, std::size_t);
+        regex operator""_re(const char *, std::size_t);
     }
 
     struct symbol
@@ -67,7 +73,7 @@ namespace lime
 
       public:
         [[nodiscard]] std::optional<std::uintptr_t> symbol(const char *) const;
-        [[nodiscard]] std::optional<std::uintptr_t> symbol(const std::regex &) const;
+        [[nodiscard]] std::optional<std::uintptr_t> symbol(const regex &) const;
         [[nodiscard]] std::optional<std::uintptr_t> symbol(const sym_predicate &) const;
 
       public:
@@ -78,8 +84,8 @@ namespace lime
         [[nodiscard]] static std::optional<lib> load(const fs::path &);
 
       public:
+        [[nodiscard]] static std::optional<lib> find(const regex &);
         [[nodiscard]] static std::optional<lib> find(const fs::path &);
-        [[nodiscard]] static std::optional<lib> find(const std::regex &);
         [[nodiscard]] static std::optional<lib> find(const lib_predicate &);
     };
 } // namespace lime

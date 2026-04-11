@@ -5,11 +5,6 @@
 
 namespace lime
 {
-    std::regex literals::operator""_re(const char *str, std::size_t len)
-    {
-        return std::regex{std::string{str, len}, std::regex::icase};
-    }
-
     struct lib::impl
     {
         HMODULE handle;
@@ -148,6 +143,18 @@ namespace lime
         }
 
         return impl::from(module);
+    }
+
+    std::optional<lib> lib::find(const regex &re)
+    {
+        const auto regex = std::regex{re.pattern, std::regex::icase};
+
+        return find(
+            [&](const auto &item)
+            {
+                const auto name = item.name();
+                return std::regex_search(name.begin(), name.end(), regex);
+            });
     }
 
     std::optional<lib> lib::find(const fs::path &name)

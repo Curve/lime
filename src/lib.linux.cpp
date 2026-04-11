@@ -137,6 +137,16 @@ namespace lime
         return find(path.c_str());
     }
 
+    std::optional<lib> lib::find(const regex &re)
+    {
+        return find(
+            [&](const auto &item)
+            {
+                const auto name = item.name();
+                return std::regex_search(name.begin(), name.end(), re.regex);
+            });
+    }
+
     std::optional<lib> lib::find(const fs::path &name)
     {
         return find([name](const auto &item) { return item.name() == name; });
