@@ -73,7 +73,7 @@ jobs:
       - name: 🔬 Run Tests
         if: ${{ matrix.type != 'mingw' }}
         run: |
-          ctest --test-dir build/tests -C ${{ matrix.config }} --verbose
+          ctest --test-dir build/tests -C ${{ matrix.config }} --verbose --output-on-failure
 
       - name: 🔬 Run Tests (Wine)
         if: ${{ matrix.type == 'mingw' }}
