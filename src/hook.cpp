@@ -12,6 +12,9 @@
 
 namespace lime
 {
+    template <typename T>
+    using res = basic_hook::res<T>;
+
     using offset_ptr = std::variant<std::int8_t *,   //
                                     std::uint8_t *,  //
                                     std::int16_t *,  //
@@ -95,7 +98,7 @@ namespace lime
         return m_impl->trampoline->start();
     }
 
-    std::expected<basic_hook, basic_hook::error> basic_hook::create(std::uintptr_t source, std::uintptr_t target)
+    res<basic_hook> basic_hook::create(std::uintptr_t source, std::uintptr_t target)
     {
         auto page = page::at(source);
 
