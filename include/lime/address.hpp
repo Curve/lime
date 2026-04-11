@@ -18,9 +18,6 @@ namespace lime
         address(std::uintptr_t);
 
       public:
-        address(const instruction &); // TODO: Remove?
-
-      public:
         [[nodiscard]] std::uintptr_t value() const;
 
       public:
