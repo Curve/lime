@@ -111,7 +111,7 @@ namespace lime
 
     bool page::can(protection what) const
     {
-        return prot() & what;
+        return (prot() & what) == what;
     }
 
     bool page::restore()
@@ -139,7 +139,7 @@ namespace lime
 
     bool page::allow(protection what)
     {
-        return protect(prot() & what);
+        return protect(prot() | what);
     }
 
     bool page::protect(protection prot)
