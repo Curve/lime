@@ -447,7 +447,7 @@ namespace lime
         else
         {
             rtn = {0xFF, 0x25, 0x00, 0x00, 0x00, 0x00};
-            std::ranges::move(make_ptr(target), std::back_inserter(rtn));
+            rtn.insert_range(rtn.end(), make_ptr(target));
         }
 
         return rtn;
