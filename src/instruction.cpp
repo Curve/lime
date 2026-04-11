@@ -116,14 +116,14 @@ namespace lime
         {
             auto instruction = at(current);
 
-            if (!instruction)
+            if (!instruction.has_value())
             {
                 continue;
             }
 
             const auto next = instruction->next();
 
-            if (!next)
+            if (!next.has_value())
             {
                 continue;
             }

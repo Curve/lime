@@ -50,7 +50,7 @@ suite<"Instruction"> instruction_suite = []
     expect(eq(mov->branching(), false));
     expect(eq(mov->mnemonic(), std::string_view{"mov"}));
 
-    auto prev = mov->prev();
+    auto prev = mov->prev("mov");
 
     expect(eq(prev.has_value(), true));
     expect(eq(prev->mnemonic(), std::string_view{"mov"}));
