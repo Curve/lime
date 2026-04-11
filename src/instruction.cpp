@@ -234,6 +234,11 @@ namespace lime
             return std::nullopt;
         }
 
+        return at(*addr);
+    }
+
+    std::optional<instruction> instruction::at(const lime::address &addr)
+    {
         auto decoder = ZydisDecoder{};
 
         if constexpr (arch == architecture::x64)
@@ -248,11 +253,11 @@ namespace lime
         auto inst = ZydisDecodedInstruction{};
         auto ops  = std::array<ZydisDecodedOperand, ZYDIS_MAX_OPERAND_COUNT>{};
 
-        if (!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, addr->ptr(), max_instruction_size, &inst, ops.data())))
+        if (!ZYAN_SUCCESS(ZydisDecoderDecodeFull(&decoder, addr.ptr(), max_instruction_size, &inst, ops.data())))
         {
             return std::nullopt;
         }
 
-        return instruction{{.address = address, .instruction = inst, .operands = ops}};
+        return instruction{{.address = addr.value(), .instruction = inst, .operands = ops}};
     }
 } // namespace lime

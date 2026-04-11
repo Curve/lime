@@ -11,6 +11,8 @@
 
 namespace lime
 {
+    class address;
+
     struct imm
     {
         bool relative;
@@ -90,5 +92,6 @@ namespace lime
 
       public:
         [[nodiscard]] static std::optional<instruction> at(std::uintptr_t);
+        [[nodiscard]] static std::optional<instruction> at(const lime::address &);
     };
 } // namespace lime
