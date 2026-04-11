@@ -34,14 +34,14 @@ suite<"Module"> module_suite = []
     const auto path = find_library().string();
 
     auto loaded = lime::lib::load(path);
-    expect(eq(loaded.has_value(), true));
+    expect(loaded.has_value());
 
     auto test = lime::lib::find("lime-shared-lib"_re);
-    expect(eq(test.has_value(), true));
+    expect(test.has_value());
 
 #if defined(WIN32) || defined(_WIN32)
-    auto case_test = lime::lib::find("LIME-SHARED-LIB");
-    expect(eq(case_test.has_value(), true));
+    auto case_test = lime::lib::find("LIME-SHARED-LIB"_re);
+    expect(case_test.has_value());
 #endif
 
     expect(test->name().contains("lime-shared"));
