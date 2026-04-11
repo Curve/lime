@@ -31,20 +31,30 @@ namespace lime
     {
         using enum protection;
 
+        auto rtn = protection{};
+
         if (prot & PAGE_READONLY)
         {
-            return read;
+            rtn |= read;
         }
-        else if (prot & PAGE_READWRITE)
+        if (prot & PAGE_EXECUTE)
         {
-            return read | write;
+            rtn |= execute;
         }
-        else if (prot & PAGE_EXECUTE_READWRITE || prot & PAGE_EXECUTE_WRITECOPY)
+        if (prot & PAGE_READWRITE)
         {
-            return read | write | execute;
+            rtn |= read | write;
+        }
+        if (prot & PAGE_EXECUTE_READ)
+        {
+            rtn |= read | execute;
+        }
+        if (prot & PAGE_EXECUTE_READWRITE || prot & PAGE_EXECUTE_WRITECOPY)
+        {
+            rtn |= read | write | execute;
         }
 
-        return {};
+        return rtn;
     }
 
     DWORD page::impl::translate(protection prot)
