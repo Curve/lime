@@ -8,7 +8,7 @@ namespace lime
     char htob(std::string_view hex)
     {
         std::uint8_t parsed = '\x00';
-        std::from_chars(hex.begin(), hex.end(), parsed, 16);
+        std::from_chars(hex.data(), hex.data() + hex.size(), parsed, 16);
         return static_cast<char>(parsed);
     }
 
