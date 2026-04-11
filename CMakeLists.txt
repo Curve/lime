@@ -6,7 +6,6 @@ project(lime LANGUAGES CXX VERSION 7.0)
 # +-------------------------------------------------------------------------------------------------------+
 
 option(lime_tests               "Build tests"                                         OFF)
-option(lime_no_alloc2           "Disables VirtualAlloc2"                              OFF)
 option(lime_static_entrypoint   "Use platform independent entrypoint implementation"  OFF)
 
 # +-------------------------------------------------------------------------------------------------------+
@@ -123,11 +122,6 @@ target_sources(${PROJECT_NAME} PRIVATE ${src})
 # elseif(NOT lime_static_entrypoint)
 #   target_sources(${PROJECT_NAME} PRIVATE "src/entrypoint.linux.cpp")
 # endif()
-
-
-if (lime_no_alloc2)
-  target_compile_definitions(${PROJECT_NAME} PUBLIC LIME_DISABLE_ALLOC2)
-endif()
 
 # +-------------------------------------------------------------------------------------------------------+
 # | Setup tests                                                                                           |
