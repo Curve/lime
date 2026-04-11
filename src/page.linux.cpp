@@ -265,6 +265,6 @@ namespace lime
             return std::nullopt;
         }
 
-        return std::move(*it);
+        return *it;
     }
 } // namespace lime

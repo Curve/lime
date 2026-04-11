@@ -155,7 +155,7 @@ namespace lime
         rtn.source.write({jump});
         rtn.source_page.restore();
 
-        return std::move(rtn);
+        return rtn;
     }
 
     std::size_t basic_hook::impl::required_prologue_size(bool near) const
