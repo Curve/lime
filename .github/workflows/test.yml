@@ -23,18 +23,20 @@ jobs:
 
           - type: mingw
             container: archlinux:multilib-devel
-            deps: pacman --noconfirm -Syyu cmake gcc git make mingw-w64 wine
+            deps: pacman --noconfirm -Syyu cmake gcc git ninja mingw-w64 wine
 
           - type: mingw
             arch: x86
-            cmake_args: -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-x86.cmake
+            cmake_args: -GNinja -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-x86.cmake
+
           - type: mingw
             arch: x64
-            cmake_args: -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-x64.cmake
+            cmake_args: -GNinja -DCMAKE_TOOLCHAIN_FILE=cmake/mingw-x64.cmake
 
           - type: windows
             arch: x86
             cmake_args: -A Win32
+
           - type: windows
             arch: x64
             cmake_args: -A x64
@@ -42,6 +44,7 @@ jobs:
           - type: windows-clang
             arch: x86
             cmake_args: -T ClangCL -A Win32
+
           - type: windows-clang
             arch: x64
             cmake_args: -T ClangCL -A x64
