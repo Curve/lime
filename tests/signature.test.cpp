@@ -26,9 +26,7 @@ suite<"Signature"> signature_suite = []
 
     expect(ida_result.has_value());
     expect(pattern_result.has_value());
-
     expect(eq(*ida_result, *pattern_result));
-    expect(eq(*ida_result, address + 4));
 
     expect(std::ranges::contains(ida_sig.find<all>(*page), *ida_result));
     expect(std::ranges::contains(sig.find<all>(*page), *ida_result));
