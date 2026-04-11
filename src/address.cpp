@@ -30,6 +30,8 @@ namespace lime
 
     bool address::write(std::span<const std::uint8_t> data) const
     {
+        using enum protection;
+
         auto page = lime::page::at(m_address);
 
         if (!page.has_value())
@@ -37,10 +39,10 @@ namespace lime
             return false;
         }
 
-        const auto writable = page->can(protection::write);
+        const auto writable = page->can(read | write);
         auto *const ptr     = reinterpret_cast<void *>(m_address);
 
-        if (!writable && !page->allow(protection::write))
+        if (!writable && !page->allow(read | write))
         {
             return false;
         }
