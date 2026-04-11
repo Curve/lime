@@ -28,7 +28,6 @@ namespace lime
     struct basic_hook::impl
     {
         address source;
-        page source_page;
 
       public:
         std::uintptr_t target;
@@ -39,12 +38,12 @@ namespace lime
         std::optional<page> spring_board;
 
       public:
-        [[nodiscard]] std::size_t required_prologue_size(bool near) const;
-        [[nodiscard]] std::size_t estimate_trampoline_size(bool near) const;
+        [[nodiscard]] std::optional<std::size_t> required_prologue_size(bool near) const;
+        [[nodiscard]] std::optional<std::size_t> estimate_trampoline_size(bool near) const;
 
       public:
-        bool create_springboard();
-        bool create_trampoline(bool near, bool spring_board);
+        [[nodiscard]] bool create_springboard();
+        [[nodiscard]] res<void> create_trampoline(bool near, bool spring_board);
 
       public:
         static std::optional<offset_ptr> offset_of(const instruction &source);
@@ -68,24 +67,20 @@ namespace lime
 
     basic_hook::~basic_hook()
     {
-        if (!m_impl)
-        {
-            return;
-        }
-
         std::ignore = std::move(*this).reset();
     }
 
     std::uintptr_t basic_hook::reset() &&
     {
-        if (!m_impl || !m_impl->source_page.protect(rwx))
+        if (!m_impl)
         {
-            assert(false && "Failed to protect original function for restoration");
             return {};
         }
 
-        m_impl->source.write({m_impl->prologue});
-        m_impl->source_page.restore();
+        if (!m_impl->source.write({m_impl->prologue}))
+        {
+            assert(false && "Failed to restore original function");
+        }
 
         const auto rtn = m_impl->source.value();
         m_impl.reset();
@@ -100,43 +95,39 @@ namespace lime
 
     res<basic_hook> basic_hook::create(std::uintptr_t source, std::uintptr_t target)
     {
-        auto page = page::at(source);
-
-        if (!page.has_value())
-        {
-            return std::unexpected{error::bad_page};
-        }
-
-        if (!page->can(protection::read))
-        {
-            return std::unexpected{error::bad_prot};
-        }
-
         auto start = instruction::at(source);
 
         if (!start.has_value())
         {
-            return std::unexpected{error::bad_func};
+            return std::unexpected{error::instruction};
         }
 
-        if (auto follow = start->follow().transform([](auto addr) { return instruction::at(addr); }); follow && follow->has_value())
+        if (auto destination = start->follow(); destination.has_value())
         {
-            start = std::move(**follow);
-            page.emplace(page::at(start->address()).value());
+            start = instruction::at(*destination);
+        }
+
+        if (!start.has_value())
+        {
+            return std::unexpected{error::redirect};
         }
 
         auto rtn = impl{
-            .source      = address::unsafe(start->address()),
-            .source_page = std::move(*page),
-            .target      = target,
+            .source = address::unsafe(start->address()),
+            .target = target,
         };
 
         const auto spring_board = rtn.create_springboard();
-        const auto near         = rtn.create_trampoline(true, spring_board);
+        auto near               = rtn.create_trampoline(true, spring_board);
 
-        if (!near && !rtn.create_trampoline(false, spring_board))
+        if (!near.has_value())
         {
-            return std::unexpected{error::relocate};
+            near = rtn.create_trampoline(false, spring_board);
+        }
+
+        if (!near.has_value())
+        {
+            return std::unexpected{near.error()};
         }
 
         const auto destination = spring_board ? rtn.spring_board->start() : target;
@@ -146,53 +137,60 @@ namespace lime
 
         if (remaining > 0)
         {
-            std::vector<std::uint8_t> padding(remaining, 0x90);
-            std::ranges::move(padding, std::back_inserter(jump));
+            jump.insert_range(jump.end(), std::vector<std::uint8_t>(remaining, 0x90));
         }
 
-        if (!rtn.source_page.protect(rwx))
+        if (!rtn.source.write({jump}))
         {
-            return std::unexpected{error::protect};
+            return std::unexpected{error::write};
         }
-
-        rtn.source.write({jump});
-        rtn.source_page.restore();
 
         return rtn;
     }
 
-    std::size_t basic_hook::impl::required_prologue_size(bool near) const
+    std::optional<std::size_t> basic_hook::impl::required_prologue_size(bool near) const
     {
         const auto required = near ? size::jmp_near : size::jmp_far;
 
         auto rtn  = 0u;
-        auto inst = instruction::at(source.value()).value();
+        auto inst = instruction::at(source.value());
 
         while (rtn < required)
         {
-            rtn += inst.size();
-            inst = std::move(inst.next().value());
+            if (!inst.has_value())
+            {
+                return std::nullopt;
+            }
+
+            rtn += inst->size();
+            inst = inst->next();
         }
 
         return rtn;
     }
 
-    std::size_t basic_hook::impl::estimate_trampoline_size(bool near) const
+    std::optional<std::size_t> basic_hook::impl::estimate_trampoline_size(bool near) const
     {
-        auto rtn        = prologue.size() + (near ? size::jmp_near : size::jmp_far);
         const auto addr = reinterpret_cast<std::uintptr_t>(prologue.data());
+        auto rtn        = prologue.size() + (near ? size::jmp_near : size::jmp_far);
 
-        for (auto i = 0u; prologue.size() > i;)
+        for (auto i = 0uz; prologue.size() > i;)
         {
-            auto current = instruction::at(addr + i).value();
-            i += current.size();
+            auto current = instruction::at(addr + i);
 
-            if (!current.relative())
+            if (!current.has_value())
+            {
+                return std::nullopt;
+            }
+
+            i += current->size();
+
+            if (!current->relative())
             {
                 continue;
             }
 
-            if (!current.branching())
+            if (!current->branching())
             {
                 rtn += sizeof(std::uintptr_t);
                 continue;
@@ -219,32 +217,45 @@ namespace lime
         return true;
     }
 
-    bool basic_hook::impl::create_trampoline(bool near, bool spring_board)
+    res<void> basic_hook::impl::create_trampoline(bool near, bool spring_board)
     {
-        prologue = source.copy(required_prologue_size(spring_board));
+        if (const auto required = required_prologue_size(spring_board); required.has_value())
+        {
+            prologue = source.copy(*required);
+        }
+        else
+        {
+            return std::unexpected{error::instruction};
+        }
 
         const auto size = estimate_trampoline_size(near);
+
+        if (!size.has_value())
+        {
+            return std::unexpected{error::instruction};
+        }
+
         trampoline.reset();
 
         if (near)
         {
-            trampoline = page::allocate(source.value(), size, rwx);
+            trampoline = page::allocate(source.value(), *size, rwx);
         }
         else
         {
-            trampoline = page::allocate(size, rwx);
+            trampoline = page::allocate(*size, rwx);
         }
 
         if (!trampoline)
         {
-            return false;
+            return std::unexpected{error::page};
         }
 
-        auto content = prologue;
-        content.reserve(size);
-
+        auto content        = prologue;
         const auto original = source.value() + prologue.size();
-        std::ranges::move(make_jmp(trampoline->start() + prologue.size(), original, near), std::back_inserter(content));
+
+        content.reserve(*size);
+        content.insert_range(content.end(), make_jmp(trampoline->start() + prologue.size(), original, near));
 
         const auto start = reinterpret_cast<std::uintptr_t>(content.data());
 
@@ -259,7 +270,12 @@ namespace lime
             }
 
             const auto original_rip    = source.value() + i;
-            const auto original_target = inst.follow(original_rip).value();
+            const auto original_target = inst.follow(original_rip);
+
+            if (!original_target)
+            {
+                return std::unexpected{error::relocate};
+            }
 
             const auto rip           = trampoline->start() + i;
             const auto reloc_address = trampoline->start() + content.size();
@@ -267,40 +283,40 @@ namespace lime
             const auto new_offset = reloc_address - rip - inst_size;
             auto offset           = offset_of(inst);
 
-            if (!offset)
+            if (!offset.has_value())
             {
-                return false;
+                return std::unexpected{error::relocate};
             }
 
-            if (try_offset(offset.value(), static_cast<std::intptr_t>(rip - original_rip)))
+            if (try_offset(*offset, static_cast<std::intptr_t>(rip - original_rip)))
             {
                 continue;
             }
             else if (!inst.branching())
             {
-                std::ranges::move(make_ptr(original_target), std::back_inserter(content));
+                content.insert_range(content.end(), make_ptr(*original_target));
             }
             else
             {
-                std::ranges::move(make_jmp(reloc_address, original_target, false), std::back_inserter(content));
+                content.insert_range(content.end(), make_jmp(reloc_address, *original_target, false));
             }
 
-            if (try_redirect(offset.value(), static_cast<std::intptr_t>(new_offset)))
+            if (try_redirect(*offset, static_cast<std::intptr_t>(new_offset)))
             {
                 continue;
             }
 
-            return false;
+            return std::unexpected{error::relocate};
         }
 
         if (content.size() > size)
         {
-            return false;
+            return std::unexpected{error::small_prologue};
         }
 
         address::unsafe(trampoline->start()).write({content});
 
-        return true;
+        return {};
     }
 
     std::optional<offset_ptr> basic_hook::impl::offset_of(const instruction &source)

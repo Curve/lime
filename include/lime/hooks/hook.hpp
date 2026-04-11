@@ -33,11 +33,12 @@ namespace lime
         enum class error : std::uint8_t
         {
             not_unique,
-            bad_page,
-            bad_prot,
-            bad_func,
             relocate,
-            protect,
+            small_prologue,
+            page,
+            write,
+            redirect,
+            instruction,
         };
 
         template <typename T>
