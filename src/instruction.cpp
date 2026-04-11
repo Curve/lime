@@ -171,9 +171,31 @@ namespace lime
 
     std::optional<std::uintptr_t> instruction::follow(std::uintptr_t rip) const
     {
+        for (auto i = 0uz; m_impl->operands.size() > i; ++i)
+        {
+            auto rtn = follow(rip, i);
+
+            if (!rtn.has_value())
+            {
+                continue;
+            }
+
+            return rtn;
+        }
+
+        return std::nullopt;
+    }
+
+    std::optional<std::uintptr_t> instruction::follow(std::uintptr_t rip, std::size_t operand) const
+    {
+        if (operand >= m_impl->operands.size())
+        {
+            return std::nullopt;
+        }
+
         auto result = ZyanU64{};
 
-        if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&m_impl->instruction, m_impl->operands.data(), rip, &result)))
+        if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(&m_impl->instruction, &m_impl->operands.at(operand), rip, &result)))
         {
             return std::nullopt;
         }

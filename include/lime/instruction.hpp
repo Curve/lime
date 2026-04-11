@@ -79,6 +79,7 @@ namespace lime
       public:
         [[nodiscard]] std::optional<std::uintptr_t> follow() const;
         [[nodiscard]] std::optional<std::uintptr_t> follow(std::uintptr_t rip) const;
+        [[nodiscard]] std::optional<std::uintptr_t> follow(std::uintptr_t rip, std::size_t operand) const;
 
       public:
         [[nodiscard]] std::optional<instruction> operator-(std::size_t) const;
