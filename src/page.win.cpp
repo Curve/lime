@@ -1,8 +1,10 @@
 #include "page.hpp"
-#include "module.hpp"
+
+#include "lib.hpp"
 #include "constants.hpp"
 
 #include <limits>
+
 #include <windows.h>
 #include <memoryapi.h>
 
@@ -10,54 +12,56 @@ namespace lime
 {
     struct page::impl
     {
-        protection prot;
-        DWORD original_prot;
+        DWORD prot;
 
       public:
-        std::uintptr_t end;
         std::uintptr_t start;
+        std::uintptr_t end;
+
+      public:
+        std::optional<DWORD> original;
+        std::shared_ptr<void> release;
 
       public:
         static protection translate(DWORD);
         static DWORD translate(protection);
-
-      public:
-        static std::shared_ptr<page> from(LPVOID, std::size_t, protection);
     };
 
     protection page::impl::translate(DWORD prot)
     {
-        protection rtn{protection::none};
+        using enum protection;
 
         if (prot & PAGE_READONLY)
         {
-            rtn = protection::read;
+            return read;
         }
         else if (prot & PAGE_READWRITE)
         {
-            rtn = protection::read | protection::write;
+            return read | write;
         }
-        else if (prot & (PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE | PAGE_EXECUTE_WRITECOPY))
+        else if (prot & PAGE_EXECUTE_READWRITE || prot & PAGE_EXECUTE_WRITECOPY)
         {
-            rtn = protection::read | protection::write | protection::execute;
+            return read | write | execute;
         }
 
-        return rtn;
+        return {};
     }
 
     DWORD page::impl::translate(protection prot)
     {
-        DWORD rtn{0};
+        using enum protection;
 
-        if (prot & protection::read)
+        auto rtn = DWORD{};
+
+        if (prot & read)
         {
             rtn = PAGE_READONLY;
         }
-        if (prot & protection::write)
+        if (prot & write)
         {
             rtn = PAGE_READWRITE;
         }
-        if (prot & protection::execute)
+        if (prot & execute)
         {
             rtn = PAGE_EXECUTE_READWRITE;
         }
@@ -65,55 +69,24 @@ namespace lime
         return rtn;
     }
 
-    std::shared_ptr<page> page::impl::from(LPVOID address, std::size_t size, protection protection)
-    {
-        auto *rtn = new page;
+    page::page(impl data) : m_impl(std::make_unique<impl>(std::move(data))) {}
 
-        rtn->m_impl->start = reinterpret_cast<std::uintptr_t>(address);
-        rtn->m_impl->end   = rtn->m_impl->start + size;
-
-        rtn->m_impl->original_prot = translate(protection);
-        rtn->m_impl->prot          = protection;
-
-        auto deleter = [](page *page)
-        {
-            VirtualFree(reinterpret_cast<LPVOID>(page->start()), page->size(), MEM_RELEASE);
-            delete page;
-        };
-
-        return {rtn, deleter};
-    }
-
-    page::page() : m_impl(std::make_unique<impl>()) {}
-
-    page::~page() = default;
-
-    page::page(const page &other) : m_impl(std::make_unique<impl>())
-    {
-        *m_impl = *other.m_impl;
-    }
+    page::page(const page &other) : page(*other.m_impl) {}
 
     page::page(page &&other) noexcept : m_impl(std::move(other.m_impl)) {}
 
-    page &page::operator=(page &&other) noexcept
+    page::~page() = default;
+
+    page &page::operator=(page other) noexcept
     {
-        m_impl = std::move(other.m_impl);
+        swap(*this, other);
         return *this;
     }
 
-    protection page::prot() const
+    void swap(page &first, page &second) noexcept
     {
-        return m_impl->prot;
-    }
-
-    std::size_t page::size() const
-    {
-        return m_impl->end - m_impl->start;
-    }
-
-    std::uintptr_t page::end() const
-    {
-        return m_impl->end;
+        using std::swap;
+        swap(first.m_impl, second.m_impl);
     }
 
     std::uintptr_t page::start() const
@@ -121,117 +94,110 @@ namespace lime
         return m_impl->start;
     }
 
+    std::uintptr_t page::end() const
+    {
+        return m_impl->end;
+    }
+
+    std::size_t page::size() const
+    {
+        return m_impl->end - m_impl->start;
+    }
+
+    protection page::prot() const
+    {
+        return impl::translate(m_impl->prot);
+    }
+
+    bool page::can(protection what) const
+    {
+        return prot() & what;
+    }
+
     bool page::restore()
     {
-        [[maybe_unused]] DWORD old{};
+        if (!m_impl->original.has_value())
+        {
+            return true;
+        }
 
-        if (VirtualProtect(reinterpret_cast<LPVOID>(start()), size(), m_impl->original_prot, &old) == 0)
+        const auto original       = *m_impl->original;
+        auto *const start_address = reinterpret_cast<LPVOID>(start());
+
+        [[maybe_unused]] auto old = DWORD{};
+
+        if (VirtualProtect(start_address, size(), original, &old) == 0)
         {
             return false;
         }
 
-        m_impl->prot = impl::translate(m_impl->original_prot);
+        m_impl->prot     = original;
+        m_impl->original = {};
 
         return true;
+    }
+
+    bool page::allow(protection what)
+    {
+        return protect(prot() & what);
     }
 
     bool page::protect(protection prot)
     {
-        [[maybe_unused]] DWORD old{};
+        const auto protection     = impl::translate(prot);
+        auto *const start_address = reinterpret_cast<LPVOID>(start());
 
-        if (VirtualProtect(reinterpret_cast<LPVOID>(start()), size(), impl::translate(prot), &old) == 0)
+        auto original = DWORD{};
+
+        if (VirtualProtect(start_address, size(), protection, &original) == 0)
         {
             return false;
         }
 
-        m_impl->prot = prot;
+        m_impl->original = original;
+        m_impl->prot     = protection;
 
         return true;
     }
 
-    std::vector<page> page::pages()
+    template <>
+    std::optional<page> page::allocate<page::policy::exact>(std::uintptr_t where, std::size_t size, protection protection)
     {
-        std::vector<page> rtn;
+        const auto prot   = impl::translate(protection);
+        auto *const alloc = VirtualAlloc(reinterpret_cast<LPVOID>(where), size, MEM_COMMIT | MEM_RESERVE, prot);
 
-        void *address{};
-        MEMORY_BASIC_INFORMATION info;
-
-        while (VirtualQuery(address, &info, sizeof(info)))
-        {
-            auto base = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
-            rtn.emplace_back(unsafe(base));
-
-            address = reinterpret_cast<void *>(base + info.RegionSize);
-        }
-
-        return rtn;
-    }
-
-    page page::unsafe(std::uintptr_t address)
-    {
-        // NOLINTNEXTLINE(*-optional-access)
-        return at(address).value();
-    }
-
-    std::optional<page> page::at(std::uintptr_t address)
-    {
-        MEMORY_BASIC_INFORMATION info;
-
-        if (VirtualQuery(reinterpret_cast<LPVOID>(address), &info, sizeof(info)) == 0)
+        if (!alloc)
         {
             return std::nullopt;
         }
 
-        const auto base = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
-
-        page rtn;
-
-        rtn.m_impl->start         = base;
-        rtn.m_impl->end           = base + info.RegionSize;
-        rtn.m_impl->original_prot = info.Protect;
-        rtn.m_impl->prot          = impl::translate(info.Protect);
-
-        return rtn;
-    }
-
-    std::shared_ptr<page> page::allocate(std::size_t size, protection prot)
-    {
-        return allocate<alloc_policy::exact>(reinterpret_cast<std::uintptr_t>(nullptr), size, prot);
+        return page{{
+            .prot    = prot,
+            .start   = reinterpret_cast<std::uintptr_t>(alloc),
+            .end     = reinterpret_cast<std::uintptr_t>(alloc) + size,
+            .release = std::shared_ptr<void>{alloc, [](auto *alloc) { VirtualFree(alloc, 0, MEM_RELEASE); }},
+        }};
     }
 
     template <>
-    std::shared_ptr<page> page::allocate<alloc_policy::exact>(std::uintptr_t where, std::size_t size,
-                                                              protection protection)
+    std::optional<page> page::allocate<page::policy::nearby>(std::uintptr_t where, std::size_t size, protection protection)
     {
-        auto *addr      = reinterpret_cast<LPVOID>(where);
-        const auto prot = impl::translate(protection);
-        auto *alloc     = VirtualAlloc(addr, size, MEM_COMMIT | MEM_RESERVE, prot);
-
-        if (!alloc)
-        {
-            return nullptr;
-        }
-
-        return impl::from(alloc, size, protection);
-    }
-
-    template <>
-    std::shared_ptr<page> page::allocate<alloc_policy::nearby>(std::uintptr_t where, std::size_t size,
-                                                               protection protection)
-    {
-#ifdef LIME_DISABLE_ALLOC2
-        return nullptr;
-#else
-
         if constexpr (lime::arch == lime::architecture::x86)
         {
             return allocate(size, protection);
         }
 
-        MEM_EXTENDED_PARAMETER param{};
-        MEM_ADDRESS_REQUIREMENTS requirements{};
+        static const auto VirtualAlloc2 = []
+        {
+            const auto kernel_base = lib::load("kernelbase.dll");
+            const auto address     = kernel_base->symbol("VirtualAlloc2").value();
+            return reinterpret_cast<decltype(::VirtualAlloc2) *>(address);
+        }();
 
-        SYSTEM_INFO si{};
+        auto param        = MEM_EXTENDED_PARAMETER{};
+        auto requirements = MEM_ADDRESS_REQUIREMENTS{};
+
+        auto si = SYSTEM_INFO{};
         GetSystemInfo(&si);
 
         const auto granularity = si.dwAllocationGranularity;
@@ -249,21 +215,68 @@ namespace lime
         param.Pointer = &requirements;
         param.Type    = MemExtendedParameterAddressRequirements;
 
-        static const auto VirtualAlloc2 = []()
-        {
-            auto kernel_base = module::load("kernelbase.dll");
-            return reinterpret_cast<decltype(::VirtualAlloc2) *>(kernel_base->symbol("VirtualAlloc2"));
-        }();
-
-        auto *alloc = VirtualAlloc2(GetCurrentProcess(), nullptr, size, MEM_COMMIT | MEM_RESERVE,
-                                    impl::translate(protection), &param, 1);
+        const auto prot   = impl::translate(protection);
+        auto *const alloc = VirtualAlloc2(GetCurrentProcess(), nullptr, size, MEM_COMMIT | MEM_RESERVE, prot, &param, 1);
 
         if (!alloc)
         {
-            return nullptr;
+            return std::nullopt;
         }
 
-        return impl::from(alloc, size, protection);
-#endif
+        return page{{
+            .prot    = prot,
+            .start   = reinterpret_cast<std::uintptr_t>(alloc),
+            .end     = reinterpret_cast<std::uintptr_t>(alloc) + size,
+            .release = std::shared_ptr<void>{alloc, [](auto *alloc) { VirtualFree(alloc, 0, MEM_RELEASE); }},
+        }};
+    }
+
+    std::optional<page> page::allocate(std::size_t size, protection prot)
+    {
+        return allocate<policy::exact>(reinterpret_cast<std::uintptr_t>(nullptr), size, prot);
+    }
+
+    std::vector<page> page::pages()
+    {
+        auto rtn = std::vector<page>{};
+
+        const auto *address = LPVOID{};
+        auto info           = MEMORY_BASIC_INFORMATION{};
+
+        while (VirtualQuery(address, &info, sizeof(info)))
+        {
+            const auto start = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
+            const auto end   = start + info.RegionSize;
+
+            rtn.emplace_back(page{{
+                .prot  = info.Protect,
+                .start = start,
+                .end   = end,
+            }});
+
+            address = reinterpret_cast<LPVOID>(end);
+        }
+
+        return rtn;
+    }
+
+    std::optional<page> page::at(std::uintptr_t address)
+    {
+        const auto *addr = reinterpret_cast<LPVOID>(address);
+        auto info        = MEMORY_BASIC_INFORMATION{};
+
+        if (VirtualQuery(addr, &info, sizeof(info)) == 0)
+        {
+            return std::nullopt;
+        }
+
+        const auto start = reinterpret_cast<std::uintptr_t>(info.BaseAddress);
+        const auto end   = start + info.RegionSize;
+
+        return page{{
+            .prot  = info.Protect,
+            .start = start,
+            .end   = end,
+        }};
     }
 } // namespace lime
