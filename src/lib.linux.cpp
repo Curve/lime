@@ -8,11 +8,6 @@
 
 namespace lime
 {
-    std::regex literals::operator""_re(const char *str, std::size_t len)
-    {
-        return std::regex{std::string{str, len}};
-    }
-
     struct lib::impl
     {
         void *handle;
