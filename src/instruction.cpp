@@ -109,6 +109,8 @@ namespace lime
 
     std::optional<instruction> instruction::prev() const
     {
+        auto candidates = std::vector<instruction>{};
+
         const auto address = m_impl->address;
         const auto start   = address - max_instruction_size;
 
@@ -143,10 +145,15 @@ namespace lime
                 continue;
             }
 
-            return instruction;
+            candidates.emplace_back(std::move(*instruction));
         }
 
-        return std::nullopt;
+        if (candidates.empty())
+        {
+            return std::nullopt;
+        }
+
+        return candidates.back();
     }
 
     std::optional<instruction> instruction::prev(lime::mnemonic mnemonic) const
