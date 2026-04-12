@@ -1,18 +1,42 @@
 cmake_minimum_required(VERSION 3.21)
-project(lime LANGUAGES CXX VERSION 7.0)
+project(lime LANGUAGES CXX VERSION 8.0.0)
+
+# +-------------------------------------------------------------------------------------------------------+
+# | Library switches                                                                                      |
+# +-------------------------------------------------------------------------------------------------------+
+
+option(lime_tests "Build tests" OFF)
 
 # +-------------------------------------------------------------------------------------------------------+
 # | Library options                                                                                       |
 # +-------------------------------------------------------------------------------------------------------+
 
-option(lime_tests               "Build tests"                                         OFF)
-option(lime_static_entrypoint   "Use platform independent entrypoint implementation"  OFF)
+set(lime_entrypoint "Disabled" CACHE STRING "The cross-platform entrypoint implementation to use")
 
 # +-------------------------------------------------------------------------------------------------------+
 # | CMake options                                                                                         |
 # +-------------------------------------------------------------------------------------------------------+
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# +-------------------------------------------------------------------------------------------------------+
+# | Convenience wrapper over `message`                                                                    |
+# +-------------------------------------------------------------------------------------------------------+
+
+function(lime_message LEVEL MESSAGE)
+  message(${LEVEL} "lime: ${MESSAGE}")
+endfunction()
+
+# +-------------------------------------------------------------------------------------------------------+
+# | Ensure valid library options                                                                          |
+# +-------------------------------------------------------------------------------------------------------+
+
+set(lime_valid_entrypoints Disabled Platform Static)
+set_property(CACHE lime_entrypoint PROPERTY STRINGS ${lime_valid_entrypoints})
+
+if (NOT lime_entrypoint IN_LIST lime_valid_entrypoints)
+  lime_message(FATAL_ERROR "Bad Entrypoint, expected one of ${lime_valid_entrypoints}")
+endif()
 
 # +-------------------------------------------------------------------------------------------------------+
 # | Setup library                                                                                         |
@@ -91,43 +115,47 @@ target_link_libraries(${PROJECT_NAME} PUBLIC  cr::flagpp)
 # +-------------------------------------------------------------------------------------------------------+
 
 if (UNIX AND NOT MINGW)
-  CPMFindPackage(
-    NAME           scnlib
-    VERSION        4.0.1
-    GIT_REPOSITORY "https://github.com/eliaskosunen/scnlib"
-    SYSTEM         ON
+  set(sources
+    "src/lib.linux.cpp"
+    "src/page.linux.cpp"
   )
 
-  file(GLOB src "src/*.linux*.cpp")
-  target_link_libraries(${PROJECT_NAME} PRIVATE scn::scn)
+  if (lime_entrypoint STREQUAL "Platform")
+    list(APPEND sources
+      "src/entrypoint.linux.cpp"
+    )
+  endif()
+
+  target_sources(${PROJECT_NAME} PRIVATE ${sources})
 endif()
 
 if (WIN32)
-  file(GLOB src "src/*.win*.cpp")
+  set(sources
+    "src/lib.win.cpp"
+    "src/page.win.cpp"
+  )
+
+  if (lime_entrypoint STREQUAL "Platform")
+    list(APPEND sources
+      "src/entrypoint.win.cpp"
+    )
+  endif()
+
+  target_sources(${PROJECT_NAME} PRIVATE ${sources})
   target_compile_definitions(${PROJECT_NAME} PRIVATE NOMINMAX)
 endif()
 
-target_sources(${PROJECT_NAME} PRIVATE ${src})
-
-# +-------------------------------------------------------------------------------------------------------+
-# | Setup entrypoint                                                                                      |
-# +-------------------------------------------------------------------------------------------------------+
-
-# TODO: Entrypoint should be its own target
-
-# if (lime_static_entrypoint)
-#   target_sources(${PROJECT_NAME} PRIVATE "src/entrypoint.static.cpp")
-# elseif (NOT lime_static_entrypoint AND WIN32)
-#   target_sources(${PROJECT_NAME} PRIVATE "src/entrypoint.win.cpp")
-# elseif(NOT lime_static_entrypoint)
-#   target_sources(${PROJECT_NAME} PRIVATE "src/entrypoint.linux.cpp")
-# endif()
+if (lime_entrypoint STREQUAL "Static")
+  target_sources(${PROJECT_NAME} PRIVATE
+    "src/entrypoint.cpp"
+  )
+endif()
 
 # +-------------------------------------------------------------------------------------------------------+
 # | Setup tests                                                                                           |
 # +-------------------------------------------------------------------------------------------------------+
 
 if (lime_tests)
-  message(STATUS "[lime] Building tests")
+  lime_message(STATUS "Building tests")
   add_subdirectory(tests)
 endif()
