@@ -1,0 +1,9 @@
+#pragma once
+
+#include <filesystem>
+
+namespace lime::@proxy_NAME@
+{
+    bool init(const std::filesystem::path &);
+}
+

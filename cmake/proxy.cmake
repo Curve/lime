@@ -1,22 +1,34 @@
-function(lime_mingw_generate_proxy TARGET DEFINITIONS)
-    message(STATUS "[lime] Generating Proxy for \"${TARGET}\"")
+function(lime_mingw_generate_proxy)
+    cmake_parse_arguments(PARSE_ARGV 0 proxy "" "NAME;DEFINITIONS;TARGET" "")
 
-    if (NOT WIN32)
-        message(WARNING "[lime] Proxy-Generation is only supported on windows!")
-        message(WARNING "[lime] You might be interested in ld preload for unix")
+    if (NOT proxy_NAME)
+        set(proxy_NAME "exports")
     endif()
 
-    file(STRINGS ${DEFINITIONS} DEFS)
+    lime_message(STATUS "Generating Proxy from \"${proxy_DEFINITIONS}\"")
+
+    if (NOT WIN32)
+        lime_message(WARNING "Proxy-Generation is only supported on windows!")
+        lime_message(WARNING "You might be interested in ld preload for unix")
+    endif()
+
+    file(STRINGS ${proxy_DEFINITIONS} DEFS)
     set(MAP_EXPORTS "")
 
-    set(SOURCE_DIR "${CMAKE_BINARY_DIR}/lime")
-    file(MAKE_DIRECTORY ${SOURCE_DIR})
+    set(ORIGIN_DIR "${CMAKE_BINARY_DIR}/${proxy_NAME}-proxy")
+    set(SOURCE_DIR "${ORIGIN_DIR}/src")
+    set(HEADER_DIR "${ORIGIN_DIR}/include")
 
-    set(DEF_FILE "${SOURCE_DIR}/exports.def")
-    set(SRC_FILE "${SOURCE_DIR}/exports.hpp")
+    file(MAKE_DIRECTORY "${SOURCE_DIR}")
+    file(MAKE_DIRECTORY "${HEADER_DIR}/lime")
+
+    set(DEF_FILE "${SOURCE_DIR}/${proxy_NAME}.def")
+    set(HPP_FILE "${HEADER_DIR}/lime/${proxy_NAME}.hpp")
+    set(CPP_FILE "${SOURCE_DIR}/${proxy_NAME}.cpp")
 
     file(REMOVE ${DEF_FILE})
-    file(REMOVE ${SRC_FILE})
+    file(REMOVE ${HPP_FILE})
+    file(REMOVE ${CPP_FILE})
 
     file(APPEND ${DEF_FILE} "EXPORTS\n")
 
@@ -34,13 +46,15 @@ function(lime_mingw_generate_proxy TARGET DEFINITIONS)
             set(CURRENT_ORDINAL ${CMAKE_MATCH_1})
         endif()
 
-        file(APPEND ${DEF_FILE} "\t${entry} = LIME_PROXY_EXPORT_${CURRENT_INDEX} @${CURRENT_ORDINAL}\n")
+        file(APPEND ${DEF_FILE} "\t${entry} = LIME_PROXY_EXPORT_${proxy_NAME}_${CURRENT_INDEX} @${CURRENT_ORDINAL}\n")
         string(APPEND MAP_EXPORTS " \\\n\tTRANSFORMER(${CURRENT_INDEX}, \"${entry}\")")
     endforeach()
 
     list(LENGTH DEFS EXPORT_COUNT)
-    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/proxy.cpp.in" ${SRC_FILE})
 
-    target_sources(${TARGET} PUBLIC ${DEF_FILE})
-    target_include_directories(${TARGET} PUBLIC ${SOURCE_DIR})
+    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/proxy.hpp.in" ${HPP_FILE})
+    configure_file("${CMAKE_CURRENT_FUNCTION_LIST_DIR}/proxy.cpp.in" ${CPP_FILE})
+
+    target_sources(${proxy_TARGET} PUBLIC ${DEF_FILE} ${CPP_FILE})
+    target_include_directories(${proxy_TARGET} PUBLIC ${HEADER_DIR})
 endfunction()
