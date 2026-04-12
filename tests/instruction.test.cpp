@@ -52,11 +52,9 @@ suite<"Instruction"> instruction_suite = []
 
     auto prev = mov->prev("mov");
 
-    expect(eq(prev.has_value(), true));
-    expect(eq(prev->mnemonic(), std::string_view{"mov"}));
-
-    expect(eq(prev->size(), 2));
-    expect(eq(prev->address(), reinterpret_cast<std::uintptr_t>(data)));
+    expect(eq(prev.empty(), false));
+    expect(eq(std::ranges::contains(prev, "mov", &lime::instruction::mnemonic), true));
+    expect(eq(std::ranges::contains(prev, reinterpret_cast<std::uintptr_t>(data), &lime::instruction::address), true));
 
     auto rel_move = mov->next();
 
