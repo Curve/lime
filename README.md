@@ -23,7 +23,7 @@ Lime is a *cross-platform* library that is focused on game modding and tries to 
     - In ±2GB range of specified address
   - Update / Restore protection
 - Libraries
-  - Iterate Loaded Modules
+  - Iterate Loaded Libraries
   - Iterate Symbols
   - Load Libraries
 - Address
