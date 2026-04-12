@@ -3,15 +3,17 @@
 </p>
 
 ## 👋 Introduction
+
 Lime is a *cross-platform* library that is focused on game modding and tries to provide you with useful features for your journey.
 
 ## 🗒️ Features
+
 - Detours
   - x86/x86-64
   - Lambda support
-  - (Cross-Platform) Calling Convention support _(for lambdas!)_
+  - Cross-Platform Calling Convention support _(extendable!)_
 - Instruction
-  - Get next / prev instruction
+  - Get next / prev[^1] instruction
   - Get immediates, displacement, size, mnemonic
   - Calculate absolute target _(follow relative instructions...)_
 - Memory Pages
@@ -19,11 +21,11 @@ Lime is a *cross-platform* library that is focused on game modding and tries to 
     - Anywhere
     - Exactly at specified address
     - In ±2GB range of specified address
-  - Read / Write / Restore protection
-- Module
+  - Update / Restore protection
+- Libraries
   - Iterate Loaded Modules
   - Iterate Symbols
-  - Load Modules
+  - Load Libraries
 - Address
   - Read / Write Data
 - Signature Scanner
@@ -34,29 +36,17 @@ Lime is a *cross-platform* library that is focused on game modding and tries to 
 > [!NOTE]  
 > Lime follows `RAII` so you won't have to care about manually cleaning anything up (i.e. when allocating a page).
 
+[^1]: It is not possible to accurately determine the previous instruction, thus lime will return possible candidates. 
+
 ## ⚙️ Configuration
 
-### Static Entrypoint
+### Cross-Platform Entrypoint
+
 ```cmake
-set(lime_static_entrypoint ON)
+set(lime_entrypoint "Static" / "Platform")
 ```
 
-> Default is: `OFF`
-
-Use a platform-independent method for the entrypoint implementation.  
-You do not need to enable this to make use of the cross-platform entrypoint!
-
-### VirtualAlloc2
-```cmake
-set(lime_no_alloc2 ON)
-```
-
-> Default is: `OFF`
-
-Can be used to disable the usage of `VirtualAlloc2`.  
-
-~~This should be used for compatibility with wine as it currently does not support the `LowestStartingAddress` requirement.~~  
-Should work since wine 8.11 🎉
+> Default is: `Disabled`
 
 # 📦 Installation
 
@@ -64,7 +54,7 @@ Should work since wine 8.11 🎉
   ```cmake
   CPMFindPackage(
     NAME           lime
-    VERSION        5.0
+    VERSION        7.0.0
     GIT_REPOSITORY "https://github.com/Curve/lime"
   )
   ```
@@ -73,7 +63,7 @@ Should work since wine 8.11 🎉
   ```cmake
   include(FetchContent)
 
-  FetchContent_Declare(lime GIT_REPOSITORY "https://github.com/Curve/lime" GIT_TAG v5.0)
+  FetchContent_Declare(lime GIT_REPOSITORY "https://github.com/Curve/lime" GIT_TAG v7.0.0)
   FetchContent_MakeAvailable(lime)
 
   target_link_libraries(<target> cr::lime)
@@ -81,8 +71,17 @@ Should work since wine 8.11 🎉
 
 ## 📖 Examples
 
-https://github.com/Curve/lime/blob/7de073bd4736900193f6af5c543a3cf62e6f1a73/tests/hook.test.cpp#L46-L52
-https://github.com/Curve/lime/blob/9ee66d3cc9e8976d5d8a40856d7ee5a09d32c415/tests/hook.test.cpp#L44-L52
+```cpp
+lime::make_hook(func, [](auto &hook, int param) { 
+    return std::move(hook).reset()(param + 10); 
+});
+
+using enum lime::calling_convention;
+
+lime::make_hook<int(void *), cc_fastcall>(0xDEADBEEF, [](auto &hook, void* self) { 
+    return hook.original()(self); 
+});
+```
 
 > For more examples see [tests](tests/)
 
