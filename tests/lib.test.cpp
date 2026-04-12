@@ -49,6 +49,8 @@ suite<"Module"> module_suite = []
     expect(test->size() > 0);
 
     expect(test->symbol("demo"_re).has_value());
+    expect(eq(test->symbol("demo"_re).value(), (*test)["demo"_re].value()));
+
     expect(test->symbol("lime_demo_export").has_value());
     expect(test->symbol([](std::string_view name) { return name.contains("lime_demo"); }).has_value());
 
@@ -59,4 +61,5 @@ suite<"Module"> module_suite = []
     auto demo_export    = reinterpret_cast<demo_export_t>(*test->symbol("lime_demo_export"));
 
     expect(eq(demo_export(10), 20));
+    expect(eq((*test)["lime_demo"_re, lime::id<int(int)>].value()(10), 20));
 };
