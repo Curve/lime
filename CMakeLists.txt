@@ -118,6 +118,7 @@ if (UNIX AND NOT MINGW)
   set(sources
     "src/lib.linux.cpp"
     "src/page.linux.cpp"
+    "src/utils.linux.cpp"
   )
 
   if (lime_entrypoint STREQUAL "Platform")
