@@ -95,8 +95,11 @@ namespace lime
         static res<hook> create(Address auto source, pointer target);
     };
 
-    template <typename R, typename... Ts, typename T>
+    template <auto = calling_convention::cc_generic, typename R, typename... Ts, typename T>
     auto make_hook(R (*source)(Ts...), T &&replacement);
+
+    template <typename T, auto = calling_convention::cc_generic, typename U, typename V>
+    auto make_hook(U &&source, V &&replacement);
 } // namespace lime
 
 #include "hook.inl"

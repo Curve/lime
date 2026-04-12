@@ -93,9 +93,15 @@ namespace lime
         return hook{std::move(*rtn)};
     }
 
-    template <typename R, typename... Ts, typename T>
+    template <auto Convention, typename R, typename... Ts, typename T>
     auto make_hook(R (*source)(Ts...), T &&replacement)
     {
-        return hook<R(Ts...)>::create(source, std::forward<T>(replacement));
+        return hook<R(Ts...), Convention>::create(source, std::forward<T>(replacement));
+    }
+
+    template <typename T, auto Convention, typename U, typename V>
+    auto make_hook(U &&source, V &&replacement)
+    {
+        return hook<T, Convention>::create(std::forward<U>(source), std::forward<V>(replacement));
     }
 } // namespace lime
