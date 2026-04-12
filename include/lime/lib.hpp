@@ -1,9 +1,12 @@
 #pragma once
 
+#include "utils/convention.hpp"
+
 #include <vector>
 #include <memory>
 
 #include <cstdint>
+#include <type_traits>
 
 #include <regex>
 #include <optional>
@@ -16,6 +19,11 @@
 
 namespace lime
 {
+    using utils::calling_convention;
+
+    template <typename T, auto U = calling_convention::cc_generic>
+    static constexpr auto id = std::type_identity<typename utils::convention_traits<T, U>::pointer>{};
+
     namespace fs = std::filesystem;
 
     struct regex
@@ -77,7 +85,11 @@ namespace lime
         [[nodiscard]] std::optional<std::uintptr_t> symbol(const sym_predicate &) const;
 
       public:
-        // TODO: member that returns function pointer => operator(), operator[]
+        template <typename T>
+        [[nodiscard]] std::optional<std::uintptr_t> operator[](T &&) const;
+
+        template <typename T, typename U>
+        [[nodiscard]] std::optional<U> operator[](T &&, std::type_identity<U>) const;
 
       public:
         [[nodiscard]] static std::vector<lib> libraries();
@@ -89,3 +101,5 @@ namespace lime
         [[nodiscard]] static std::optional<lib> find(const lib_predicate &);
     };
 } // namespace lime
+
+#include "lib.inl"
