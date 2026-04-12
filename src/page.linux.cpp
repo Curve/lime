@@ -2,20 +2,23 @@
 #include "constants.hpp"
 
 #include <cassert>
+#include <algorithm>
 
 #include <limits>
 #include <ranges>
 
 #include <fstream>
-#include <algorithm>
+#include <charconv>
 
 #include <sys/mman.h>
-#include <scn/scan.h>
 
 namespace lime
 {
     struct page::impl
     {
+        using scan = std::tuple<std::uintptr_t, std::uintptr_t, std::string_view>;
+
+      public:
         protection prot;
 
       public:
@@ -27,12 +30,50 @@ namespace lime
         std::shared_ptr<void> release;
 
       public:
+        static std::optional<scan> parse_line(std::string_view);
         static std::optional<page> parse_page(std::string_view);
     };
 
+    std::optional<page::impl::scan> page::impl::parse_line(std::string_view line)
+    {
+        auto take_until = [last = std::string_view::size_type{}, &line](char c) mutable
+        {
+            const auto start = last;
+            const auto end   = line.find(c);
+            return line.substr(start, end - std::exchange(last, end + 1));
+        };
+
+        const auto parts = std::array{
+            take_until('-'),
+            take_until(' '),
+            take_until(' '),
+        };
+
+        auto start = std::uintptr_t{};
+
+        if (auto status = std::from_chars(parts[0].data(), parts[0].data() + parts[0].size(), start, 16); status.ec != std::errc{})
+        {
+            return std::nullopt;
+        }
+
+        auto end = std::uintptr_t{};
+
+        if (auto status = std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), end, 16); status.ec != std::errc{})
+        {
+            return std::nullopt;
+        }
+
+        if (parts[2].size() < 3)
+        {
+            return std::nullopt;
+        }
+
+        return scan{start, end, parts[2]};
+    }
+
     std::optional<page> page::impl::parse_page(std::string_view line)
     {
-        const auto result = scn::scan<std::uintptr_t, std::uintptr_t, std::string>(line, "{:x}-{:x} {}");
+        const auto result = parse_line(std::string{line});
 
         if (!result)
         {
@@ -40,13 +81,8 @@ namespace lime
             return std::nullopt;
         }
 
-        auto [start, end, permissions] = result->values();
+        auto [start, end, permissions] = *result;
         auto prot                      = protection{};
-
-        if (permissions.size() < 3) [[unlikely]]
-        {
-            permissions = std::format("{}{}", permissions, std::string(3 - permissions.size(), '-'));
-        }
 
         if (permissions[0] == 'r')
         {
