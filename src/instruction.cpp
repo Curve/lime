@@ -3,6 +3,9 @@
 #include "address.hpp"
 #include "constants.hpp"
 
+#include <ranges>
+#include <cstring>
+
 #include <Zydis/Zydis.h>
 
 namespace lime
@@ -107,12 +110,12 @@ namespace lime
         return std::nullopt;
     }
 
-    std::optional<instruction> instruction::prev() const
+    std::vector<instruction> instruction::prev() const
     {
-        auto candidates = std::vector<instruction>{};
-
         const auto address = m_impl->address;
         const auto start   = address - max_instruction_size;
+
+        auto rtn = std::vector<instruction>{};
 
         for (auto current = start; current < address; ++current)
         {
@@ -135,40 +138,25 @@ namespace lime
                 continue;
             }
 
-            if (next->size() != size())
+            auto *self  = reinterpret_cast<void *>(address);
+            auto *other = reinterpret_cast<void *>(next->address());
+
+            if (std::memcmp(self, other, size()) != 0)
             {
                 continue;
             }
 
-            if (next->mnemonic() != mnemonic())
-            {
-                continue;
-            }
-
-            candidates.emplace_back(std::move(*instruction));
+            rtn.emplace_back(std::move(*instruction));
         }
 
-        if (candidates.empty())
-        {
-            return std::nullopt;
-        }
-
-        return candidates.back();
+        return rtn;
     }
 
-    std::optional<instruction> instruction::prev(lime::mnemonic mnemonic) const
+    std::vector<instruction> instruction::prev(lime::mnemonic mnemonic) const
     {
-        for (auto it = prev(); it; it = it->prev())
-        {
-            if (it->mnemonic() != mnemonic)
-            {
-                continue;
-            }
-
-            return it;
-        }
-
-        return std::nullopt;
+        return prev()                                                                              //
+               | std::views::filter([&](const auto &item) { return item.mnemonic() == mnemonic; }) //
+               | std::ranges::to<std::vector>();
     }
 
     std::optional<std::uintptr_t> instruction::follow() const

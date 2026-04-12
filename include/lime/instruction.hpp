@@ -6,6 +6,8 @@
 #include <string_view>
 
 #include <array>
+#include <vector>
+
 #include <variant>
 #include <optional>
 
@@ -75,8 +77,8 @@ namespace lime
         [[nodiscard]] std::optional<instruction> next(lime::mnemonic) const;
 
       public:
-        [[nodiscard]] [[lime::inaccurate]] std::optional<instruction> prev() const;
-        [[nodiscard]] [[lime::inaccurate]] std::optional<instruction> prev(lime::mnemonic) const;
+        [[nodiscard]] std::vector<instruction> prev() const;
+        [[nodiscard]] std::vector<instruction> prev(lime::mnemonic) const;
 
       public:
         [[nodiscard]] std::optional<std::uintptr_t> follow() const;
