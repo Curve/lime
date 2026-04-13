@@ -7,8 +7,6 @@
 
 #include <limits>
 #include <cassert>
-#include <iterator>
-#include <algorithm>
 
 namespace lime
 {
