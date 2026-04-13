@@ -4,7 +4,11 @@ namespace lime
 {
     regex literals::operator""_re(const char *str, std::size_t len)
     {
+        static const auto meta = std::regex{R"([\.\^\$\+\(\)\[\]\{\}\|\?\*])"};
+
         auto string = std::string{str, len};
+        std::regex_replace(string, meta, "\\$&");
+
         return {.regex = std::regex{string}, .pattern = string};
     }
 
