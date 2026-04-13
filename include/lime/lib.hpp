@@ -30,6 +30,9 @@ namespace lime
     {
         std::regex regex;
         std::string raw;
+
+      public:
+        static pattern from(std::string_view);
     };
 
     namespace literals

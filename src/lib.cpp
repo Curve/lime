@@ -37,7 +37,7 @@ namespace lime
             const auto last    = buffer.empty() ? '\0' : buffer.back();
             const auto escaped = last == '\\';
 
-            if (!escaped && c == '<')
+            if (const auto open = (c == '<'); open && !escaped)
             {
                 co_yield std::ranges::elements_of(emit({
                     .value = std::exchange(buffer, std::string{}),
@@ -46,12 +46,12 @@ namespace lime
 
                 continue;
             }
-            else if (c == '<')
+            else if (open)
             {
                 buffer.pop_back();
             }
 
-            if (!escaped && c == '>')
+            if (const auto close = (c == '>'); close && !escaped)
             {
                 co_yield std::ranges::elements_of(emit({
                     .value = std::exchange(buffer, std::string{}),
@@ -60,7 +60,7 @@ namespace lime
 
                 continue;
             }
-            else if (c == '>')
+            else if (close)
             {
                 buffer.pop_back();
             }
@@ -77,7 +77,7 @@ namespace lime
         return std::regex_replace(value, meta, "\\$&");
     }
 
-    pattern literals::operator""_re(const char *str, std::size_t len)
+    pattern pattern::from(std::string_view value)
     {
         static const auto escape = [](const token &item)
         {
@@ -89,12 +89,17 @@ namespace lime
             return regex_escape(item.value);
         };
 
-        auto string = parse(std::string_view{str, len}) //
-                      | std::views::transform(escape)   //
-                      | std::views::join                //
+        auto string = parse(value)                    //
+                      | std::views::transform(escape) //
+                      | std::views::join              //
                       | std::ranges::to<std::string>();
 
         return {.regex = std::regex{string}, .raw = string};
+    }
+
+    pattern literals::operator""_re(const char *str, std::size_t len)
+    {
+        return pattern::from(std::string_view{str, len});
     }
 
     std::uintptr_t lib::end() const
