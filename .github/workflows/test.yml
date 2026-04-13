@@ -42,10 +42,6 @@ jobs:
             cmake_args: -A x64
 
           - type: windows-clang
-            arch: x86
-            cmake_args: -T ClangCL -A Win32
-
-          - type: windows-clang
             arch: x64
             cmake_args: -T ClangCL -A x64
 
