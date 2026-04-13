@@ -46,6 +46,10 @@ namespace lime
 
                 continue;
             }
+            else if (c == '<')
+            {
+                buffer.pop_back();
+            }
 
             if (!escaped && c == '>')
             {
@@ -56,6 +60,10 @@ namespace lime
 
                 continue;
             }
+            else if (c == '>')
+            {
+                buffer.pop_back();
+            }
 
             buffer.push_back(c);
         }
@@ -63,23 +71,22 @@ namespace lime
         co_yield std::ranges::elements_of(emit({.value = buffer, .kind = kind}));
     }
 
-    std::string regex_escape(std::string value)
+    std::string regex_escape(const std::string &value)
     {
         static const auto meta = std::regex{R"([\.\^\$\+\(\)\[\]\{\}\|\?\*])"};
-        std::regex_replace(value, meta, "\\$&");
-        return value;
+        return std::regex_replace(value, meta, "\\$&");
     }
 
     pattern literals::operator""_re(const char *str, std::size_t len)
     {
-        static const auto escape = [](token item)
+        static const auto escape = [](const token &item)
         {
             if (item.kind == kind::regex)
             {
                 return item.value;
             }
 
-            return regex_escape(std::move(item.value));
+            return regex_escape(item.value);
         };
 
         auto string = parse(std::string_view{str, len}) //
