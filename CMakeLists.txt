@@ -97,7 +97,7 @@ include("cmake/cpm.cmake")
 
 CPMAddPackage(
   NAME           Zydis
-  VERSION        4.1.1
+  GIT_TAG        9bfadd6
   GIT_REPOSITORY "https://github.com/zyantific/zydis"
 )
 
