@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.25)
 project(lime LANGUAGES CXX VERSION 7.0.0)
 
 # +-------------------------------------------------------------------------------------------------------+
