@@ -26,16 +26,20 @@ namespace lime
 
     namespace fs = std::filesystem;
 
-    struct regex
+    struct pattern
     {
         std::regex regex;
-        std::string pattern;
+        std::string raw;
     };
 
     namespace literals
     {
-        regex operator""_re(const char *, std::size_t);
-    }
+        /**
+         * Example: "PlainText<Regex.*within[0-9]Angle\d+Brackets>"_re
+         * You can also escape the angle brackets: "These\<Are\>Escaped"_re
+         */
+        pattern operator""_re(const char *, std::size_t);
+    } // namespace literals
 
     struct symbol
     {
@@ -81,7 +85,7 @@ namespace lime
 
       public:
         [[nodiscard]] std::optional<std::uintptr_t> symbol(const char *) const;
-        [[nodiscard]] std::optional<std::uintptr_t> symbol(const regex &) const;
+        [[nodiscard]] std::optional<std::uintptr_t> symbol(const pattern &) const;
         [[nodiscard]] std::optional<std::uintptr_t> symbol(const sym_predicate &) const;
 
       public:
@@ -96,7 +100,7 @@ namespace lime
         [[nodiscard]] static std::optional<lib> load(const fs::path &);
 
       public:
-        [[nodiscard]] static std::optional<lib> find(const regex &);
+        [[nodiscard]] static std::optional<lib> find(const pattern &);
         [[nodiscard]] static std::optional<lib> find(const fs::path &);
         [[nodiscard]] static std::optional<lib> find(const lib_predicate &);
     };

@@ -132,7 +132,7 @@ namespace lime
         return find(path.c_str());
     }
 
-    std::optional<lib> lib::find(const regex &re)
+    std::optional<lib> lib::find(const pattern &re)
     {
         return find(
             [&](const auto &item)

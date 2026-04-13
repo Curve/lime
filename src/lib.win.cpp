@@ -145,9 +145,9 @@ namespace lime
         return impl::from(module);
     }
 
-    std::optional<lib> lib::find(const regex &re)
+    std::optional<lib> lib::find(const pattern &re)
     {
-        const auto regex = std::regex{re.pattern, std::regex::icase};
+        const auto regex = std::regex{re.raw, std::regex::icase};
 
         return find(
             [&](const auto &item)
