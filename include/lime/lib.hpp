@@ -2,13 +2,12 @@
 
 #include "utils/convention.hpp"
 
-#include <vector>
 #include <memory>
 
 #include <cstdint>
 #include <type_traits>
 
-#include <regex>
+#include <vector>
 #include <optional>
 
 #include <string>
@@ -28,8 +27,25 @@ namespace lime
 
     struct pattern
     {
-        std::regex regex;
-        std::string raw;
+        friend class lib;
+        struct impl;
+
+      private:
+        std::unique_ptr<impl> m_impl;
+
+      public:
+        pattern(impl);
+
+      public:
+        pattern(const pattern &);
+        pattern(pattern &&) noexcept;
+
+      public:
+        ~pattern();
+
+      public:
+        pattern &operator=(pattern) noexcept;
+        friend void swap(pattern &, pattern &) noexcept;
 
       public:
         static pattern from(std::string_view);

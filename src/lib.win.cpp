@@ -1,4 +1,4 @@
-#include "lib.hpp"
+#include "lib.impl.hpp"
 
 #include <windows.h>
 #include <psapi.h>
@@ -147,7 +147,7 @@ namespace lime
 
     std::optional<lib> lib::find(const pattern &re)
     {
-        const auto regex = std::regex{re.raw, std::regex::icase};
+        const auto regex = std::regex{re.m_impl->raw, std::regex::icase};
 
         return find(
             [&](const auto &item)

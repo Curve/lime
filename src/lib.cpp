@@ -1,4 +1,4 @@
-#include "lib.hpp"
+#include "lib.impl.hpp"
 
 #include <ranges>
 #include <generator>
@@ -77,6 +77,26 @@ namespace lime
         return std::regex_replace(value, meta, "\\$&");
     }
 
+    pattern::pattern(impl data) : m_impl(std::make_unique<impl>(std::move(data))) {}
+
+    pattern::pattern(const pattern &other) : pattern(*other.m_impl) {}
+
+    pattern::pattern(pattern &&other) noexcept : m_impl(std::move(other.m_impl)) {}
+
+    pattern::~pattern() = default;
+
+    pattern &pattern::operator=(pattern other) noexcept
+    {
+        swap(*this, other);
+        return *this;
+    }
+
+    void swap(pattern &first, pattern &second) noexcept
+    {
+        using std::swap;
+        swap(first.m_impl, second.m_impl);
+    }
+
     pattern pattern::from(std::string_view value)
     {
         static const auto escape = [](const token &item)
@@ -94,7 +114,7 @@ namespace lime
                       | std::views::join              //
                       | std::ranges::to<std::string>();
 
-        return {.regex = std::regex{string}, .raw = string};
+        return impl{.raw = string, .regex = std::regex{string}};
     }
 
     pattern literals::operator""_re(const char *str, std::size_t len)
@@ -109,7 +129,7 @@ namespace lime
 
     std::optional<std::uintptr_t> lib::symbol(const pattern &re) const
     {
-        return symbol([&](std::string_view name) { return std::regex_search(name.begin(), name.end(), re.regex); });
+        return symbol([&](std::string_view name) { return std::regex_search(name.begin(), name.end(), re.m_impl->regex); });
     }
 
     std::optional<lib> lib::find(const lib_predicate &pred)

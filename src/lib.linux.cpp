@@ -1,4 +1,4 @@
-#include "lib.hpp"
+#include "lib.impl.hpp"
 #include "utils.linux.hpp"
 
 #include <link.h>
@@ -138,7 +138,7 @@ namespace lime
             [&](const auto &item)
             {
                 const auto name = item.name();
-                return std::regex_search(name.begin(), name.end(), re.regex);
+                return std::regex_search(name.begin(), name.end(), re.m_impl->regex);
             });
     }
 
