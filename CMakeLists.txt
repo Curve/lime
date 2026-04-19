@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(lime LANGUAGES CXX VERSION 7.0.0)
+project(lime LANGUAGES CXX VERSION 7.1.0)
 
 # +-------------------------------------------------------------------------------------------------------+
 # | Library switches                                                                                      |

@@ -97,6 +97,19 @@ namespace lime
         swap(first.m_impl, second.m_impl);
     }
 
+    pattern pattern::icase() const
+    {
+        return impl{
+            .raw   = m_impl->raw,
+            .regex = std::regex{m_impl->raw, m_impl->regex.flags() | std::regex::icase},
+        };
+    }
+
+    bool pattern::match(std::string_view value) const
+    {
+        return std::regex_search(value.begin(), value.end(), m_impl->regex);
+    }
+
     pattern pattern::from(std::string_view value)
     {
         static const auto escape = [](const token &item)
@@ -129,7 +142,7 @@ namespace lime
 
     std::optional<std::uintptr_t> lib::symbol(const pattern &re) const
     {
-        return symbol([&](std::string_view name) { return std::regex_search(name.begin(), name.end(), re.m_impl->regex); });
+        return symbol([&](const char *name) { return re.match(name); });
     }
 
     std::optional<lib> lib::find(const lib_predicate &pred)

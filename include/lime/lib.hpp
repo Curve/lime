@@ -25,9 +25,12 @@ namespace lime
 
     namespace fs = std::filesystem;
 
+    /**
+     * Example: "PlainText<Regex.*within[0-9]Angle\d+Brackets>"_re
+     * You can also escape the angle brackets: "These\<Are\>Escaped"_re
+     */
     struct pattern
     {
-        friend class lib;
         struct impl;
 
       private:
@@ -48,15 +51,15 @@ namespace lime
         friend void swap(pattern &, pattern &) noexcept;
 
       public:
+        [[nodiscard]] pattern icase() const;
+        [[nodiscard]] bool match(std::string_view) const;
+
+      public:
         static pattern from(std::string_view);
     };
 
     namespace literals
     {
-        /**
-         * Example: "PlainText<Regex.*within[0-9]Angle\d+Brackets>"_re
-         * You can also escape the angle brackets: "These\<Are\>Escaped"_re
-         */
         pattern operator""_re(const char *, std::size_t);
     } // namespace literals
 

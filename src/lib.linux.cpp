@@ -134,12 +134,7 @@ namespace lime
 
     std::optional<lib> lib::find(const pattern &re)
     {
-        return find(
-            [&](const auto &item)
-            {
-                const auto name = item.name();
-                return std::regex_search(name.begin(), name.end(), re.m_impl->regex);
-            });
+        return find([&](const auto &item) { return re.match(item.name()); });
     }
 
     std::optional<lib> lib::find(const fs::path &name)
