@@ -25,7 +25,7 @@ namespace lime::@proxy_NAME@
 }
 
 #define LIME_EXPORT_FUNC(index, name)                                                                                                      \
-    extern "C" __attribute__((naked, stdcall)) void LIME_PROXY_EXPORT_@proxy_NAME@_##index()                                                            \
+    extern "C" __attribute__((naked)) void LIME_PROXY_EXPORT_@proxy_NAME@_##index()                                                            \
     {                                                                                                                                      \
         asm volatile("jmp *%0" : : "r"(originals[(index) - 1]));                                                                           \
     }
