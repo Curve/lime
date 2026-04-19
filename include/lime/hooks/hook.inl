@@ -53,7 +53,7 @@ namespace lime
     basic_hook::res<hook<R(Ts...), U> *> hook<R(Ts...), U>::create(Address auto source, T &&target)
         requires Callable<T, R(hook &, Ts...)>
     {
-        static auto data     = detail::data<hook *, T>{};
+        static auto data     = detail::data<hook *, T>{std::forward<T>(target)};
         static auto callback = [](Ts... params) -> R
         {
             return data.callable(*data.hook, std::forward<Ts>(params)...);
@@ -71,8 +71,7 @@ namespace lime
             return std::unexpected{rtn.error()};
         }
 
-        data.callable = std::forward<T>(target);
-        data.hook     = new hook{std::move(*rtn)};
+        data.hook = new hook{std::move(*rtn)};
 
         return data.hook;
     }
